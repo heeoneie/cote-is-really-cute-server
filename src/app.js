@@ -4,7 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
-const recommendationRoutes = require('./routes/recommendationRoutes');
+const openaiRoutes = require('./routes/openaiRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
 
 const port = process.env.PORT || 3000;
@@ -17,7 +17,7 @@ app.use(express.json());
 
 app.use('/', healthRoutes);
 app.use('/auth', authRoutes);
-app.use('/recommendation', recommendationRoutes);
+app.use('/openai', openaiRoutes);
 app.use('/protected', protectedRoutes);
 
 app.listen(port, () => {
