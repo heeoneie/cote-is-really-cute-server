@@ -15,7 +15,7 @@ const openai = new OpenAI({
 
 /**
  * @swagger
- * /:
+ * /recommendation:
  *   post:
  *     summary: 문제 추천
  *     description: 입력한 카테고리에 따라 백준의 초급, 중급, 고급 문제를 추천합니다.
@@ -50,17 +50,22 @@ const openai = new OpenAI({
  *                   type: string
  *                   example: '추천 시스템에서 오류가 발생했습니다.'
  */
-router.post('/', async (req, res) => {
+router.post('/recommend', async (req, res) => {
     const { category } = req.body;
-    const response = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-            { role: 'system', content: '너는 문제 추천 시스템이다.' },
-            { role: 'user', content: `백준에서 ${category} 문제를 초급, 중급, 고급으로 나누어 문제 번호와 제목을 배열 형식으로 3개씩 제공해 주세요. 예: 초급: [번호 - 제목], 중급: [번호 - 제목], 고급: [번호 - 제목].` }
-        ],
-        max_tokens: 150
-    });
-    res.send(response.choices[0].message.content);
+    try {
+        const response = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+                { role: 'system', content: 'You are a Baekjun problem recommendation system. Provide only the problem numbers and titles without any additional commentary.' },
+                { role: 'user', content: `백준에서 ${category} 문제를 초급, 중급, 고급으로 나누어 문제 번호와 제목을 배열 형식으로 3개씩 제공해 주세요. 예: 초급: [번호 - 제목], 중급: [번호 - 제목], 고급: [번호 - 제목].` }
+            ],
+            max_tokens: 150
+        });
+        res.send(response.choices[0].message.content);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: '추천 시스템에서 오류가 발생했습니다.' });
+    }
 });
 
 /**
@@ -124,7 +129,7 @@ router.post('/grade', async (req, res) => {
             max_tokens: 5
         });
         const answer = response.choices[0].message.content.trim().toLowerCase();
-        const result = answer.startsWith('true') ? true : false;
+        const result = answer.startsWith('true');
         res.send(result);
     } catch (error) {
         console.error(error);

@@ -5,7 +5,9 @@ const swaggerOptions = {
     swaggerDefinition: {
         servers: [
             {
-                url: 'https://violent-lea-coteisreallycute-52210e1a.koyeb.app',
+                url: process.env.NODE_ENV === 'production'
+                    ? 'https://violent-lea-coteisreallycute-52210e1a.koyeb.app'
+                    : `http://localhost:${process.env.PORT}`,
             },
         ],
         openapi: '3.0.0',
