@@ -8,15 +8,17 @@ const openaiRoutes = require('./routes/openaiRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rivalRoutes = require('./routes/rivalRoutes');
+const setupSwagger = require('./swagger/swagger');
 
-
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
 const app = express();
 
 connectDB();
 
 app.use(cors());
 app.use(express.json());
+
+setupSwagger(app);
 
 app.use('/', healthRoutes);
 app.use('/auth', authRoutes);
