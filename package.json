@@ -18,5 +18,9 @@
     "morgan": "~1.9.1",
     "openai": "^4.53.0",
     "pug": "2.0.0-beta11"
+  },
+  "devDependencies": {
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   }
 }
