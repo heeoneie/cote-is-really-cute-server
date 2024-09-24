@@ -12,7 +12,7 @@ const jwt = require('jsonwebtoken');
 
 /**
  * @swagger
- * /signup:
+ * /auth/signup:
  *   post:
  *     summary: 회원가입
  *     description: 새로운 사용자를 등록합니다.
@@ -78,7 +78,7 @@ router.post('/signup', async (req, res) => {
 
 /**
  * @swagger
- * /login:
+ * /auth/login:
  *   post:
  *     summary: 로그인
  *     description: 사용자가 이메일과 비밀번호로 로그인합니다.

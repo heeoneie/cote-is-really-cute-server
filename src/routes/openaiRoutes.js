@@ -15,7 +15,7 @@ const openai = new OpenAI({
 
 /**
  * @swagger
- * /recommendation:
+ * /openai/recommendation:
  *   post:
  *     summary: 문제 추천
  *     description: 입력한 카테고리에 따라 백준의 초급, 중급, 고급 문제를 추천합니다.
@@ -70,7 +70,7 @@ router.post('/recommend', async (req, res) => {
 
 /**
  * @swagger
- * /grade:
+ * /openai/grade:
  *   post:
  *     summary: 코드 채점
  *     description: 제공된 문제 제목, 언어, 코드로 문제의 정확성을 채점합니다.

@@ -11,7 +11,7 @@ const User = require('../models/User');
 
 /**
  * @swagger
- * /register:
+ * /rival/register:
  *   post:
  *     summary: 라이벌 등록
  *     description: 사용자가 라이벌을 등록합니다.
