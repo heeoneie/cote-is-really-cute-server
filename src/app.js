@@ -2,17 +2,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const setupSwagger = require('./swagger/swagger');
+const http = require('http');
 const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
 const openaiRoutes = require('./routes/openaiRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rivalRoutes = require('./routes/rivalRoutes');
-const battleRoutes = require('./routes/battleRoutes');
-const setupSwagger = require('./swagger/swagger');
+const { setupSocket, router: battleRoutes } = require("./routes/battleRoutes");
 
-const port = process.env.PORT;
 const app = express();
+const server = http.createServer(app);
 
 connectDB();
 
@@ -29,6 +30,9 @@ app.use('/users', userRoutes);
 app.use('/rival', rivalRoutes);
 app.use('/battle', battleRoutes);
 
-app.listen(port, () => {
+setupSocket(server);
+
+const port = process.env.PORT;
+server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
