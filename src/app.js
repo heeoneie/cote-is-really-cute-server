@@ -8,6 +8,7 @@ const openaiRoutes = require('./routes/openaiRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rivalRoutes = require('./routes/rivalRoutes');
+const battleRoutes = require('./routes/battleRoutes');
 const setupSwagger = require('./swagger/swagger');
 
 const port = process.env.PORT;
@@ -26,6 +27,7 @@ app.use('/openai', openaiRoutes);
 app.use('/protected', protectedRoutes);
 app.use('/users', userRoutes);
 app.use('/rival', rivalRoutes);
+app.use('/battle', battleRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
