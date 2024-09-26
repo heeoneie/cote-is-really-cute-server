@@ -109,4 +109,29 @@ router.post('/register', async (req, res) => {
     }
 });
 
+router.delete('/remove', async (req, res) => {
+    const { userEmail, rivalNickName } = req.query;
+
+    try {
+        const user = await User.findOne({ email: userEmail });
+        const rival = await User.findOne({ nickname: rivalNickName });
+
+        if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+
+        const userRivalIndex = user.rivals.indexOf(rival.email);
+        const rivalUserIndex = rival.rivals.indexOf(user.email);
+
+        if (userRivalIndex > -1) user.rivals.splice(userRivalIndex, 1);
+        if (rivalUserIndex > -1) rival.rivals.splice(rivalUserIndex, 1);
+
+        await user.save();
+        await rival.save();
+
+        res.status(200).json({ message: '라이벌 삭제 성공!', userRivals: user.rivals });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: '서버 에러' });
+    }
+});
+
 module.exports = router;
