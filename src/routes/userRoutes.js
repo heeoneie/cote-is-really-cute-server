@@ -4,13 +4,13 @@ const User = require('../models/User');
 
 /**
  * @swagger
- * /users/search:
+ * /users/search?nickname={nickname}:
  *   get:
  *     summary: 사용자 검색
  *     description: 닉네임을 사용하여 사용자를 검색합니다.
  *     tags: [User]
  *     parameters:
- *       - name: nickname
+ *       - name: nickName
  *         in: query
  *         required: true
  *         description: 검색할 닉네임
@@ -26,7 +26,7 @@ const User = require('../models/User');
  *               items:
  *                 type: object
  *                 properties:
- *                   nickname:
+ *                   nickName:
  *                     type: string
  *                   baekjoonTier:
  *                     type: string
@@ -39,13 +39,13 @@ const User = require('../models/User');
  */
 
 router.get('/search', async (req, res) => {
-    const { nickname } = req.query;
+    const { nickName } = req.query;
 
-    if (!nickname) return res.status(400).json({ message: '검색할 닉네임을 입력해주세요.' });
+    if (!nickName) return res.status(400).json({ message: '검색할 닉네임을 입력해주세요.' });
 
     try {
         const users = await User.find(
-            { nickname: { $regex: nickname, $options: 'i' } }
+            { nickName: { $regex: nickName, $options: 'i' } }
         ).select('-password -_id -__v -email');
 
         if (users.length === 0) return res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
