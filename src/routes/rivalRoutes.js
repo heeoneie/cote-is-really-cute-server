@@ -75,13 +75,21 @@ router.post('/register', async (req, res) => {
         const user = await User.findOne({ email: userEmail });
         const rival = await User.findOne({ nickname: rivalNickName });
 
-        if (!user || !rival) {
-            return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
-        }
+        if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+
+        const userAlreadyHasRival = user.rivals.includes(rival.email);
+        const rivalAlreadyHasUser = rival.rivals.includes(user.email);
+
+        if (userAlreadyHasRival && rivalAlreadyHasUser) return res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
 
         if (!user.rivals.includes(rival.email)) {
             user.rivals.push(rival.email);
             await user.save();
+        }
+
+        if (!rival.rivals.includes(user.email)) {
+            rival.rivals.push(user.email);
+            await rival.save();
         }
 
         res.status(200).json({ message: '라이벌 등록 성공!', rivals: user.rivals });
