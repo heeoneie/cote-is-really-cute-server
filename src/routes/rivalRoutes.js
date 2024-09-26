@@ -30,7 +30,7 @@ const User = require('../models/User');
  *               rivalNickName:
  *                 type: string
  *                 description: 등록할 라이벌의 닉네임
- *                 example: 'rivalNick'
+ *                 example: 'rivalNickname'
  *     responses:
  *       200:
  *         description: 라이벌 등록 성공
@@ -47,6 +47,16 @@ const User = require('../models/User');
  *                   items:
  *                     type: string
  *                     example: 'rival@example.com'
+ *       400:
+ *         description: 이미 등록된 라이벌
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: '이미 등록된 라이벌입니다.'
  *       404:
  *         description: 유저를 찾을 수 없음
  *         content:
