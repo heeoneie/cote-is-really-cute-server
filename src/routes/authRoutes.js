@@ -24,7 +24,7 @@ const jwt = require('jsonwebtoken');
  *           schema:
  *             type: object
  *             properties:
- *               nickname:
+ *               nickName:
  *                 type: string
  *                 description: 사용자의 닉네임
  *                 example: 'example_nickname'
@@ -63,10 +63,9 @@ const jwt = require('jsonwebtoken');
  *                   example: "서버 에러"
  */
 router.post('/signup', async (req, res) => {
-    const { nickname, email, password, baekjoonTier } = req.body;
-
+    const { nickName, email, password, baekjoonTier } = req.body;
     try {
-        const newUser = new User({ nickname, email, password, baekjoonTier });
+        const newUser = new User({ nickName, email, password, baekjoonTier });
         await newUser.save();
 
         res.status(201).json({ message: '성공적으로 회원가입이 완료되었습니다!' });
