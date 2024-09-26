@@ -109,6 +109,65 @@ router.post('/register', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /rival/remove?userEmail=${userEmail}&rivalNickname=${rivalNickname}:
+ *   delete:
+ *     summary: 라이벌 삭제
+ *     description: 사용자의 라이벌 목록에서 라이벌을 삭제합니다.
+ *     tags: [Rivals]
+ *     parameters:
+ *       - in: query
+ *         name: userEmail
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 삭제 요청을 하는 유저의 이메일
+ *         example: 'user@example.com'
+ *       - in: query
+ *         name: rivalNickName
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 삭제할 라이벌의 닉네임
+ *         example: 'rivalNickname'
+ *     responses:
+ *       200:
+ *         description: 라이벌 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: '라이벌 삭제 성공!'
+ *                 userRivals:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     example: 'rival@example.com'
+ *       404:
+ *         description: 유저를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: '유저를 찾을 수 없습니다.'
+ *       500:
+ *         description: 서버 에러
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: '서버 에러'
+ */
 router.delete('/remove', async (req, res) => {
     const { userEmail, rivalNickName } = req.query;
 

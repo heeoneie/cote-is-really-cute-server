@@ -4,7 +4,7 @@ const User = require('../models/User');
 
 /**
  * @swagger
- * /users/search:
+ * /users/search?nickname={nickname}:
  *   get:
  *     summary: 사용자 검색
  *     description: 닉네임을 사용하여 사용자를 검색합니다.
