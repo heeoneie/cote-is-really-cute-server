@@ -136,5 +136,34 @@ router.post('/grade', async (req, res) => {
         res.status(500).json({ error: '채점 중 오류가 발생했습니다.' });
     }
 });
+const fetchRandomProblem = async () => {
+    try {
+        const problem = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+                { role: 'system', content: '백준사이트에서 사람들이 많이 푼 문제 1개를 번호와 제목만 예시와 같은 형식으로 제공해 주세요. 예: 번호 제목' },
+            ],
+            max_tokens: 10,
+        });
 
-module.exports = router;
+        const problemData = problem.choices[0].message.content;
+        const parts = problemData.split(/\s+/);
+        const problemNumber = parts[0];
+        const problemTitle = parts.slice(1).join(' ');
+
+        return { problemNumber: parseInt(problemNumber), problemTitle };
+    } catch (error) {
+        console.error('문제 가져오기 중 오류 발생:', error);
+        throw error;
+    }
+};
+router.get('/get-random-problem', async (req, res) => {
+    try {
+        const problem = await fetchRandomProblem();
+        res.json(problem);
+    } catch (error) {
+        res.status(500).json({ error: '문제 가져오기 중 오류가 발생했습니다.' });
+    }
+});
+
+module.exports = { router, fetchRandomProblem };

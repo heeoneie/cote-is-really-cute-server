@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Server } = require('socket.io');
+const { fetchRandomProblem } = require("./openaiRoutes");
 
 let io;
 
@@ -16,10 +17,6 @@ const setupSocket = (server) => {
     io.on('connection', (socket) => {
         console.log('A user connected:', socket.id);
 
-        socket.on('someEvent', (data) => {
-            console.log(data);
-        });
-
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
         });
@@ -29,21 +26,22 @@ const setupSocket = (server) => {
 let waitingQueue = [];
 let battles=  {};
 
-router.post('/join', (req, res) => {
+router.post('/join', async(req, res) => {
     try {
         const userEmail = req.body.userEmail;
-        console.log(userEmail)
-
+        console.log('Join request received for:', userEmail);
         if (waitingQueue.length > 0) {
             const opponentId = waitingQueue.pop();
             const matchId = `match_${Date.now()}`;
-            console.log(opponentId, matchId)
             battles[matchId] = {
                 players: [userEmail, opponentId],
                 isMatched: true,
                 startTime: Date.now(),
             };
-            io.emit('matchFound', { matchId, players: [userEmail, opponentId] });
+            console.log('Players matched:', [userEmail, opponentId]);
+            const problem = await fetchRandomProblem();
+            console.log('Fetched Problem:', problem);
+            io.emit('matchFound', { matchId, problem, players: [userEmail, opponentId] });
             res.json({ isMatched: true, matchId });
         } else {
             waitingQueue.push(userEmail);
