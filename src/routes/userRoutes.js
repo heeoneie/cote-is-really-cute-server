@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { checkNickNameDuplicate } = require("../utils/validation");
@@ -169,8 +168,7 @@ router.put('/update-password', authMiddleware, async (req, res) => {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
 
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
+        user.password = newPassword;
         await user.save();
 
         res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
