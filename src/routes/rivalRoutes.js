@@ -83,7 +83,7 @@ router.post('/register', async (req, res) => {
 
     try {
         const user = await User.findOne({ email: userEmail });
-        const rival = await User.findOne({ nickname: rivalNickName });
+        const rival = await User.findOne({ nickName: rivalNickName });
 
         if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
 
