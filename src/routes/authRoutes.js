@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { checkNickNameDuplicate } = require("../utils/validation");
 
 /**
  * @swagger
@@ -151,6 +152,50 @@ router.post('/login', async (req, res) => {
     } catch (err) {
         console.error(err.message);
         res.status(500).send('서버 에러');
+    }
+});
+
+/**
+ * @swagger
+ * /auth/check?nickName=${nickName}:
+ *   get:
+ *     summary: 닉네임 중복 확인
+ *     description: 입력한 닉네임이 중복인지 확인합니다.
+ *     tags: [Auth]
+ *     parameters:
+ *       - name: nickName
+ *         in: query
+ *         required: true
+ *         description: 중복 확인할 닉네임
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 닉네임 중복 확인 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 available:
+ *                   type: boolean
+ *                   example: true  # 또는 false
+ *       400:
+ *         description: 닉네임 입력 누락
+ *       500:
+ *         description: 서버 오류
+ */
+router.get('/check', async (req, res) => {
+    const { nickName } = req.query;
+
+    if (!nickName) return res.status(400).json({ message: '닉네임을 입력해주세요.' });
+
+    try {
+        const isDuplicate = await checkNickNameDuplicate(nickName);
+        res.json({ available: !isDuplicate });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: '서버 에러' });
     }
 });
 
