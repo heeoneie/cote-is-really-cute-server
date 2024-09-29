@@ -3,6 +3,7 @@ const router = express.Router();
 const { Server } = require('socket.io');
 const { fetchRandomProblem } = require("./openaiRoutes");
 const User = require('../models/User');
+const { checkLevelUp } = require("../utils/level");
 
 let users = {};
 let waitingQueue = [];
@@ -12,7 +13,7 @@ let io;
 const setupSocket = (server) => {
     io = new Server(server, {
         cors: {
-            origin: "http://localhost:3000",
+            origin: "https://violent-lea-coteisreallycute-52210e1a.koyeb.app",
             methods: ["GET", "POST"],
             credentials: true
         }
@@ -40,17 +41,13 @@ const setupSocket = (server) => {
 
                 io.to(socket.id).emit('matchFound', { matchId, problem });
                 io.to(opponent.socketId).emit('matchFound', { matchId, problem });
-
-                console.log('Players matched:', [userEmail, opponent.email]);
             } else {
                 waitingQueue.push({ email: userEmail, socketId: socket.id });
-                console.log(`User ${userEmail} added to the waiting queue`);
             }
         });
 
         socket.on('submitSolution', async (data) => {
             const { problemNumber, userEmail, isCorrect } = data;
-            console.log(data);
             if (isCorrect) {
                 const match = Object.values(battles).find(battle =>
                     battle.players.includes(userEmail) && battle.problemNumber === problemNumber
@@ -60,21 +57,30 @@ const setupSocket = (server) => {
                         const winner = await User.findOne({ email: userEmail });
                         const loserEmail = match.players.find(player => player !== userEmail);
                         const loser = await User.findOne({ email: loserEmail });
-
                         const winnerSocketId = Object.keys(users).find(id => users[id] === userEmail);
                         const loserSocketId = Object.keys(users).find(id => users[id] === loserEmail);
+
+                        const experienceAwarded = 10;
+                        winner.experience += experienceAwarded;
+                        await winner.save();
+
+                        await checkLevelUp(winner);
 
                         const res = {
                             winner: winner.nickName,
                             loser: loser.nickName,
-                            problemId: problemNumber
+                            problemId: problemNumber,
+                            experience: experienceAwarded
                         }
-                        console.log(`Battle ended! Winner: ${winner.nickName}, Loser: ${loser.nickName}`);
                         io.to(winnerSocketId).emit('battleEnded', res);
                         io.to(loserSocketId).emit('battleEnded', res);
                     } catch (error) { console.error('Error finding user:', error); }
                 }
             }
+        });
+
+        socket.on('battleEnded', async ({ winnerEmail }) => {
+            console.log(`Battle ended! Winner: ${winnerEmail}`);
         });
 
         socket.on('disconnect', () => {

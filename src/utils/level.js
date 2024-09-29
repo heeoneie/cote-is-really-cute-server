@@ -24,4 +24,14 @@ const createInitialLevels = async () => {
     }
 };
 
-module.exports = createInitialLevels;
+const checkLevelUp = async (user) => {
+    const levels = await Level.find().sort({ level: 1 });
+    let currentLevelIndex = levels.findIndex(level => level._id.equals(user.levelId));
+    while (currentLevelIndex < levels.length && user.experience >= levels[currentLevelIndex]?.requiredExperience) {
+        user.levelId = levels[currentLevelIndex + 1]?._id || user.levelId;
+        currentLevelIndex++;
+    }
+    await user.save();
+};
+
+module.exports = { createInitialLevels, checkLevelUp };
