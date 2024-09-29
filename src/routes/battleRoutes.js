@@ -13,7 +13,10 @@ let io;
 const setupSocket = (server) => {
     io = new Server(server, {
         cors: {
-            origin:  "http://localhost:3000",
+            origin:  [
+                "http://localhost:3000",
+                "https://violent-lea-coteisreallycute-52210e1a.koyeb.app"
+            ],
             methods: ["GET", "POST"],
             credentials: true
         }
