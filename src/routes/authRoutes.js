@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { checkNickNameDuplicate } = require("../utils/validation");
+const Level = require("../models/Level");
 
 /**
  * @swagger
@@ -66,7 +67,18 @@ const { checkNickNameDuplicate } = require("../utils/validation");
 router.post('/signup', async (req, res) => {
     const { nickName, email, password, baekjoonTier } = req.body;
     try {
-        const newUser = new User({ nickName, email, password, baekjoonTier });
+        const level1 = await Level.findOne({ level: 1 });
+        if (!level1) return res.status(500).json({ message: '1레벨 정보가 없습니다.' });
+
+        const newUser = new User({
+            nickName,
+            email,
+            password,
+            baekjoonTier,
+            experience: 0,
+            levelId: level1._id,
+        });
+
         await newUser.save();
 
         res.status(201).json({ message: '성공적으로 회원가입이 완료되었습니다!' });

@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     baekjoonTier: { type: String, required: true },
     rivals: [{ type: String }],
+    levelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Level', },
+    experience: { type: Number, default: 0, },
 });
 
 userSchema.pre('save', async function (next) {

@@ -37,13 +37,12 @@ const setupSocket = (server) => {
                     isMatched: true,
                     startTime: Date.now(),
                 };
-                // 매칭된 두 유저에게 문제 전달
+
                 io.to(socket.id).emit('matchFound', { matchId, problem });
                 io.to(opponent.socketId).emit('matchFound', { matchId, problem });
 
                 console.log('Players matched:', [userEmail, opponent.email]);
             } else {
-                // 대기열에 유저 추가
                 waitingQueue.push({ email: userEmail, socketId: socket.id });
                 console.log(`User ${userEmail} added to the waiting queue`);
             }
