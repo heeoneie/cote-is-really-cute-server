@@ -89,24 +89,18 @@ router.post('/register', async (req, res) => {
         if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
 
         const userAlreadyHasRival = user.rivals.includes(rival._id);
-        const rivalAlreadyHasUser = rival.rivals.includes(user._id);
+        if (userAlreadyHasRival) return res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
 
-        if (userAlreadyHasRival && rivalAlreadyHasUser) return res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
+        user.rivals.push(rival._id);
+        rival.rivals.push(user._id);
 
-        if (!user.rivals.includes(rival._id)) {
-            user.rivals.push(rival._id);
-            await user.save();
-        }
-
-        if (!rival.rivals.includes(user._id)) {
-            rival.rivals.push(user._id);
-            await rival.save();
-        }
+        await user.save();
+        await rival.save();
 
         const newRival = new Rival({ userId: user._id, rivalId: rival._id });
         await newRival.save();
 
-        res.status(200).json({ message: '라이벌 등록 성공!', rivals: user.rivals });
+        res.status(200).json({ message: '라이벌 등록 성공!' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: '서버 에러' });
@@ -200,7 +194,7 @@ router.delete('/remove', async (req, res) => {
 
 /**
  * @swagger
- * /get-info?userEmail=${userEmail}:
+ * /rival/get-info?userEmail=${userEmail}:
  *   get:
  *     summary: 라이벌 정보 조회
  *     description: 주어진 이메일을 통해 유저의 레벨과 라이벌들의 닉네임 및 레벨 정보를 반환합니다.
