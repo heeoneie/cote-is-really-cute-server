@@ -178,4 +178,21 @@ router.put('/update-password', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/attend', async (req, res) => {
+    const { userEmail, attendanceDate } = req.body;
+    try {
+        const user = await User.findOne({ email: userEmail });
+
+        if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+
+        if (!user.attendanceDates.includes(attendanceDate)) {
+            user.attendanceDates.push(attendanceDate);
+            await user.save();
+        }
+        res.status(200).json({ message: '출석 성공!' });
+    } catch (error) {
+        res.status(500).json({ message: '서버 에러' });
+    }
+});
+
 module.exports = router;
