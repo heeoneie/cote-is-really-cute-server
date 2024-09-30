@@ -6,7 +6,7 @@ const Rival = require('../models/Rival');
 /**
  * @swagger
  * tags:
- *   name: Rivals
+ *   name: Rival
  *   description: 라이벌 등록 및 관리 API
  */
 
@@ -16,7 +16,7 @@ const Rival = require('../models/Rival');
  *   post:
  *     summary: 라이벌 등록
  *     description: 사용자가 라이벌을 등록합니다.
- *     tags: [Rivals]
+ *     tags: [Rival]
  *     requestBody:
  *       required: true
  *       content:
@@ -119,7 +119,7 @@ router.post('/register', async (req, res) => {
  *   delete:
  *     summary: 라이벌 삭제
  *     description: 사용자의 라이벌 목록에서 라이벌을 삭제합니다.
- *     tags: [Rivals]
+ *     tags: [Rival]
  *     parameters:
  *       - in: query
  *         name: userEmail
@@ -195,6 +195,77 @@ router.delete('/remove', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: '서버 에러' });
+    }
+});
+
+/**
+ * @swagger
+ * /get-info?userEmail=${userEmail}:
+ *   get:
+ *     summary: 라이벌 정보 조회
+ *     description: 주어진 이메일을 통해 유저의 레벨과 라이벌들의 닉네임 및 레벨 정보를 반환합니다.
+ *     tags: [Rival]
+ *     parameters:
+ *       - name: userEmail
+ *         in: query
+ *         required: true
+ *         description: 조회할 유저의 이메일
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 유저 정보 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userLevel:
+ *                   type: integer
+ *                   description: 유저의 레벨
+ *                 rivals:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       nickName:
+ *                         type: string
+ *                         description: 라이벌의 닉네임
+ *                       level:
+ *                         type: integer
+ *                         description: 라이벌의 레벨
+ *       400:
+ *         description: 이메일이 입력되지 않았습니다.
+ *       404:
+ *         description: 해당 유저를 찾을 수 없습니다.
+ *       500:
+ *         description: 서버 오류
+ */
+router.get('/get-info', async (req, res) => {
+    const { userEmail } = req.query;
+
+    if (!userEmail) return res.status(400).json({ message: '이메일을 입력해주세요.' });
+
+    try {
+        const user = await User.findOne({ email: userEmail }).populate('levelId', 'level');
+        if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+
+        const rivalPromises = user.rivals.map(async (rivalId) => {
+            const rivalUser = await User.findById(rivalId).populate('levelId', 'level');
+            return {
+                nickName: rivalUser.nickName,
+                level: rivalUser.levelId.level,
+            };
+        });
+
+        const rivals = await Promise.all(rivalPromises);
+
+        res.status(200).json({
+            userLevel: user.levelId.level,
+            rivals,
+        });
+    } catch (error) {
+        res.status(500).json({ message: '서버 오류', error });
     }
 });
 
