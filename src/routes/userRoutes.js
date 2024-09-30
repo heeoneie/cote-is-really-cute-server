@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { checkNickNameDuplicate } = require("../utils/validation");
+const { calculateConsecutiveAttendance } = require("../utils/attendance");
 
 /**
  * @swagger
@@ -182,7 +183,6 @@ router.post('/attend', async (req, res) => {
     const { userEmail, attendanceDate } = req.body;
     try {
         const user = await User.findOne({ email: userEmail });
-
         if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
 
         if (!user.attendanceDates.includes(attendanceDate)) {
@@ -191,6 +191,20 @@ router.post('/attend', async (req, res) => {
         }
         res.status(200).json({ message: '출석 성공!' });
     } catch (error) {
+        res.status(500).json({ message: '서버 에러' });
+    }
+});
+
+router.get('/attend/:userEmail', async (req, res) => {
+    const { userEmail } = req.params;
+    try {
+        const user = await User.findOne({ email: userEmail });
+        if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+
+        const consecutiveDays = calculateConsecutiveAttendance(user.attendanceDates);
+        res.status(200).json({ consecutiveDays });
+    } catch (error) {
+        console.error('Error fetching user attendance:', error);
         res.status(500).json({ message: '서버 에러' });
     }
 });
