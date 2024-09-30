@@ -50,6 +50,8 @@ const sendEmail = require("../utils/email");
  *               items:
  *                 type: object
  *                 properties:
+ *                   nickName:
+ *                     type: string
  *                   baekjoonTier:
  *                     type: string
  *                   level:
@@ -76,14 +78,20 @@ router.get('/search', async (req, res) => {
      else return res.status(400).json({ message: '유효하지 않은 검색 유형입니다.' });
 
     try {
-        const users = await User.find(query).populate('levelId', 'level').select('-password -__v -email');
+        const currentUser = await User.findOne({ email: userEmail });
+        if (!currentUser) return res.status(404).json({ message: '현재 유저를 찾을 수 없습니다.' });
+
+        const userRivalIds = currentUser.rivals;
+        query._id = { $ne: currentUser._id };
+
+        const users = await User.find(query)
+            .populate('levelId', 'level')
+            .select('-password -__v -email');
 
         if (users.length === 0) return res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
 
-        const currentUser = await User.findOne({ email: userEmail });
-        const userRivalIds = currentUser.rivals;
-
         const result = users.map(user =>({
+            nickName: user.nickName,
             baekjoonTier: user.baekjoonTier,
             level: user.levelId.level,
             isRival: userRivalIds.toString() === user._id.toString()
