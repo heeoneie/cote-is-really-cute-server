@@ -15,7 +15,7 @@ const sendEmail = require("../utils/email");
 
 /**
  * @swagger
- * /users/search?type=${email || nickName}&value=${email || nickName}:
+ * /users/search?type=${email || nickName}&value=${email || nickName}&userEmail=${userEmail}:
  *   get:
  *     summary: 사용자 검색
  *     description: 닉네임 또는 이메일을 사용하여 사용자를 검색합니다.
@@ -34,6 +34,12 @@ const sendEmail = require("../utils/email");
  *         description: 검색할 값
  *         schema:
  *           type: string
+ *       - name: userEmail
+ *         in: query
+ *         required: true
+ *         description: 현재 사용자의 이메일
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: 사용자 검색 성공
@@ -44,16 +50,12 @@ const sendEmail = require("../utils/email");
  *               items:
  *                 type: object
  *                 properties:
- *                   nickName:
- *                     type: string
  *                   baekjoonTier:
  *                     type: string
  *                   level:
  *                     type: integer
- *                   experience:
- *                     type: integer
- *                   attendanceDates:
- *                     type: array
+ *                   isRival:
+ *                     type: boolean
  *                     items:
  *                       type: string
  *       400:
@@ -64,7 +66,7 @@ const sendEmail = require("../utils/email");
  *         description: 서버 오류
  */
 router.get('/search', async (req, res) => {
-    const { type, value } = req.query;
+    const { type, value, userEmail } = req.query;
 
     if (!type || !value) return res.status(400).json({ message: '검색할 유형과 값을 입력해주세요.' });
 
@@ -74,17 +76,17 @@ router.get('/search', async (req, res) => {
      else return res.status(400).json({ message: '유효하지 않은 검색 유형입니다.' });
 
     try {
-        const users = await User.find(query).populate('levelId', 'level').select('-password -_id -__v -email');
+        const users = await User.find(query).populate('levelId', 'level').select('-password -__v -email');
 
         if (users.length === 0) return res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
 
-        const result = users.map(user => ({
-            nickName: user.nickName,
+        const currentUser = await User.findOne({ email: userEmail });
+        const userRivalIds = currentUser.rivals;
+
+        const result = users.map(user =>({
             baekjoonTier: user.baekjoonTier,
-            rivals: user.rivals,
-            level: user.levelId ? user.levelId.level : null,
-            experience: user.experience,
-            attendanceDates: user.attendanceDates
+            level: user.levelId.level,
+            isRival: userRivalIds.toString() === user._id.toString()
         }));
 
         res.json(result);
@@ -262,11 +264,11 @@ router.post('/attend', async (req, res) => {
 
         if (rivals.length === 0) console.log('라이벌이 없습니다.');
         else {
-            for (const rivalEmail of rivals) {
-                const rivalUser = await User.findOne({ email: rivalEmail });
+            for (const rivalId of rivals) {
+                const rivalUser = await User.findById(rivalId);
 
                 if (!rivalUser) {
-                    console.log(`${rivalEmail}에 해당하는 유저를 찾을 수 없습니다.`);
+                    console.log(`${rivalId}에 해당하는 유저를 찾을 수 없습니다.`);
                     continue;
                 }
 
@@ -285,6 +287,7 @@ router.post('/attend', async (req, res) => {
 
         res.status(200).json({ message: '출석 성공!' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: '서버 에러' });
     }
 });

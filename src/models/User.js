@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     baekjoonTier: { type: String, required: true },
-    rivals: [{ type: String }],
+    rivals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Rival' }],
     levelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Level', },
     experience: { type: Number, default: 0, },
     attendanceDates: [{ type: String }],
