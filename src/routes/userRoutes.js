@@ -14,16 +14,23 @@ const { calculateConsecutiveAttendance } = require("../utils/attendance");
 
 /**
  * @swagger
- * /users/search?nickName={nickName}:
+ * /users/search?type=${email || nickName}&value=${email || nickName}:
  *   get:
  *     summary: 사용자 검색
- *     description: 닉네임을 사용하여 사용자를 검색합니다.
+ *     description: 닉네임 또는 이메일을 사용하여 사용자를 검색합니다.
  *     tags: [User]
  *     parameters:
- *       - name: nickName
+ *       - name: type
  *         in: query
  *         required: true
- *         description: 검색할 닉네임
+ *         description: 검색할 유형 (nickName 또는 email)
+ *         schema:
+ *           type: string
+ *           enum: [nickName, email]
+ *       - name: value
+ *         in: query
+ *         required: true
+ *         description: 검색할 값
  *         schema:
  *           type: string
  *     responses:
@@ -40,27 +47,46 @@ const { calculateConsecutiveAttendance } = require("../utils/attendance");
  *                     type: string
  *                   baekjoonTier:
  *                     type: string
+ *                   level:
+ *                     type: integer
+ *                   experience:
+ *                     type: integer
+ *                   attendanceDates:
+ *                     type: array
+ *                     items:
+ *                       type: string
  *       400:
- *         description: 검색할 닉네임이 입력되지 않았습니다.
+ *         description: 검색할 유형과 값이 입력되지 않았습니다.
  *       404:
  *         description: 일치하는 사용자가 없습니다.
  *       500:
  *         description: 서버 오류
  */
-
 router.get('/search', async (req, res) => {
-    const { nickName } = req.query;
+    const { type, value } = req.query;
 
-    if (!nickName) return res.status(400).json({ message: '검색할 닉네임을 입력해주세요.' });
+    if (!type || !value) return res.status(400).json({ message: '검색할 유형과 값을 입력해주세요.' });
+
+    let query;
+    if (type === 'nickName') query = { nickName: { $regex: value, $options: 'i' } };
+     else if (type === 'email') query = { email: { $regex: value, $options: 'i' } };
+     else return res.status(400).json({ message: '유효하지 않은 검색 유형입니다.' });
 
     try {
-        const users = await User.find(
-            { nickName: { $regex: nickName, $options: 'i' } }
-        ).select('-password -_id -__v -email');
+        const users = await User.find(query).populate('levelId', 'level').select('-password -_id -__v -email');
 
         if (users.length === 0) return res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
 
-        res.json(users);
+        const result = users.map(user => ({
+            nickName: user.nickName,
+            baekjoonTier: user.baekjoonTier,
+            rivals: user.rivals,
+            level: user.levelId ? user.levelId.level : null,
+            experience: user.experience,
+            attendanceDates: user.attendanceDates
+        }));
+
+        res.json(result);
     } catch (error) {
         res.status(500).json({ message: '서버 오류', error });
     }
@@ -179,6 +205,46 @@ router.put('/update-password', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/attend:
+ *   post:
+ *     summary: 출석 기록 추가
+ *     description: 사용자의 출석 날짜를 기록합니다.
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userEmail:
+ *                 type: string
+ *                 description: 사용자 이메일
+ *                 example: 'user@example.com'
+ *               attendanceDate:
+ *                 type: string
+ *                 format: date
+ *                 description: 출석 날짜
+ *                 example: '2024-09-30'
+ *     responses:
+ *       200:
+ *         description: 출석 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "출석 성공!"
+ *       404:
+ *         description: 해당 유저를 찾을 수 없습니다.
+ *       500:
+ *         description: 서버 에러
+ */
+
 router.post('/attend', async (req, res) => {
     const { userEmail, attendanceDate } = req.body;
     try {
@@ -195,6 +261,35 @@ router.post('/attend', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/attend/{userEmail}:
+ *   get:
+ *     summary: 출석 일수 조회
+ *     description: 사용자의 출석 일수를 조회합니다.
+ *     tags: [User]
+ *     parameters:
+ *       - name: userEmail
+ *         in: path
+ *         required: true
+ *         description: 사용자 이메일
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 출석 일수 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 consecutiveDays:
+ *                   type: integer
+ *       404:
+ *         description: 해당 유저를 찾을 수 없습니다.
+ *       500:
+ *         description: 서버 에러
+ */
 router.get('/attend/:userEmail', async (req, res) => {
     const { userEmail } = req.params;
     try {
