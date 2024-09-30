@@ -4,6 +4,7 @@ const User = require('../models/User');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { checkNickNameDuplicate } = require("../utils/validation");
 const { calculateConsecutiveAttendance } = require("../utils/attendance");
+const sendEmail = require("../utils/email");
 
 /**
  * @swagger
@@ -255,6 +256,33 @@ router.post('/attend', async (req, res) => {
             user.attendanceDates.push(attendanceDate);
             await user.save();
         }
+
+        const today = new Date(attendanceDate).toISOString().split('T')[0];
+        const rivals = user.rivals;
+
+        if (rivals.length === 0) console.log('라이벌이 없습니다.');
+        else {
+            for (const rivalEmail of rivals) {
+                const rivalUser = await User.findOne({ email: rivalEmail });
+
+                if (!rivalUser) {
+                    console.log(`${rivalEmail}에 해당하는 유저를 찾을 수 없습니다.`);
+                    continue;
+                }
+
+                const hasAttended = rivalUser.attendanceDates.some(date =>
+                    new Date(date).toISOString().split('T')[0] === today
+                );
+
+                if (!hasAttended) {
+                    await sendEmail(rivalUser.email, '오늘 문제 풀기 알림', `
+                안녕하세요 ${rivalUser.nickName}님,
+                ${user.nickName}님이 오늘 문제를 풀었습니다. 당신도 오늘 문제를 풀어보세요!
+            `);
+                }
+            }
+        }
+
         res.status(200).json({ message: '출석 성공!' });
     } catch (error) {
         res.status(500).json({ message: '서버 에러' });
@@ -263,7 +291,7 @@ router.post('/attend', async (req, res) => {
 
 /**
  * @swagger
- * /users/attend/{userEmail}:
+ * /users/attend/${userEmail}:
  *   get:
  *     summary: 출석 일수 조회
  *     description: 사용자의 출석 일수를 조회합니다.
