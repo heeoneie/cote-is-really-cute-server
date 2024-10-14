@@ -50,7 +50,7 @@ const openai = new OpenAI({
  *                   type: string
  *                   example: '추천 시스템에서 오류가 발생했습니다.'
  */
-router.post('/recommend', async (req, res) => {
+router.post('/recommendProblems', async (req, res) => {
     const { category } = req.body;
     try {
         const response = await openai.chat.completions.create({
