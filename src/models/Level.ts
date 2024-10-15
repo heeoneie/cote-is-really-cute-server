@@ -1,5 +1,9 @@
-const mongoose = require('mongoose');
+import mongoose, { Document, model } from 'mongoose';
 
+interface ILevel extends Document {
+    level: number;
+    requiredExperience: number;
+}
 const levelSchema = new mongoose.Schema({
     level: {
         type: Number,
@@ -12,6 +16,6 @@ const levelSchema = new mongoose.Schema({
     },
 });
 
-const Level = mongoose.model('Level', levelSchema);
+const Level = model<ILevel>('Level', levelSchema);
 
-module.exports = Level;
+export default Level;
