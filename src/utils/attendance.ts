@@ -1,26 +1,21 @@
-const calculateConsecutiveAttendance = (attendanceDates) => {
+export const calculateConsecutiveAttendance = (attendanceDates: string[]): number => {
     if (attendanceDates.length === 0) return 0;
 
-    const dates = attendanceDates.map(date => new Date(date)).sort((a, b) => b - a);
+    const formDate = (date: Date): string => date.toISOString().split('T')[0];
+    const dates: Date[] = attendanceDates.map(date => new Date(date)).sort((a, b) => b.getTime() - a.getTime());
     let consecutiveCount = 0;
-    let today = new Date();
+    let today: Date = new Date();
 
     for (let date of dates) {
-        const formattedDate = date.toISOString().split('T')[0];
+        const formattedDate = formDate(date);
 
-        if (formattedDate === today.toISOString().split('T')[0]) {
-            consecutiveCount++;
-        } else {
+        if (formattedDate === formDate(date)) consecutiveCount++;
+         else {
             today.setDate(today.getDate() - 1);
-            if (formattedDate === today.toISOString().split('T')[0]) {
-                consecutiveCount++;
-            } else {
-                break;
-            }
+            if (formattedDate === formDate(date)) consecutiveCount++;
+            else break;
         }
     }
 
     return consecutiveCount;
 };
-
-module.exports = { calculateConsecutiveAttendance };

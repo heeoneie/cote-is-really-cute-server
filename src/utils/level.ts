@@ -1,6 +1,12 @@
-const Level = require('../models/Level');
+import {Repository} from "typeorm";
+import {Level} from "../entity/Level";
+import {AppDataSource} from "../config/db";
+import {User} from "../entity/User";
 
-const createInitialLevels = async () => {
+const levelRepository: Repository<Level> = AppDataSource.getRepository(Level);
+const userRepository: Repository<User> = AppDataSource.getRepository(User);
+
+export const createInitialLevels = async (): Promise<void> => {
     const levels = [
         { level: 1, requiredExperience: 200 },
         { level: 2, requiredExperience: 400 },
@@ -15,23 +21,22 @@ const createInitialLevels = async () => {
     ];
 
     for (const levelData of levels) {
-        const existingLevel = await Level.findOne({ level: levelData.level });
+        const existingLevel = await levelRepository.findOneBy({ level: levelData.level });
         if (!existingLevel) {
-            const newLevel = new Level(levelData);
-            await newLevel.save();
+            const newLevel = levelRepository.create(levelData);
+            await levelRepository.save(newLevel);
             console.log(`레벨 ${levelData.level} 저장 완료`);
         }
     }
 };
 
-const checkLevelUp = async (user) => {
-    const levels = await Level.find().sort({ level: 1 });
-    let currentLevelIndex = levels.findIndex(level => level._id.equals(user.levelId));
+export const checkLevelUp = async (user: User): Promise<void> => {
+    const levels = await levelRepository.find({ order: { level: "ASC" } });
+    let currentLevelIndex = levels.findIndex(level => level.id === user.levelId);
+
     while (currentLevelIndex < levels.length && user.experience >= levels[currentLevelIndex]?.requiredExperience) {
-        user.levelId = levels[currentLevelIndex + 1]?._id || user.levelId;
+        user.levelId = levels[currentLevelIndex + 1]?.id || user.levelId;
         currentLevelIndex++;
     }
-    await user.save();
+    await userRepository.save(user);
 };
-
-module.exports = { createInitialLevels, checkLevelUp };

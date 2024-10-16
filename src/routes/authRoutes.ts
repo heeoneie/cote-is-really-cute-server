@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const User = require('../entity/User');
 const jwt = require('jsonwebtoken');
 const { checkNickNameDuplicate } = require("../utils/validation");
-const Level = require("../models/Level");
+const Level = require("../entity/Level");
 
 /**
  * @swagger
