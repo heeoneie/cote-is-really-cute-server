@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const Rival = require('../models/Rival');
+const User = require('../entity/User');
+const Rival = require('../entity/Rival');
 
 /**
  * @swagger

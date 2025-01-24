@@ -1,4 +1,4 @@
-const Level = require('../models/Level');
+const Level = require('../entity/Level');
 
 const createInitialLevels = async () => {
   const levels = [

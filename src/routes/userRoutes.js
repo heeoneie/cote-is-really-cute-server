@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const User = require('../entity/User');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { checkNickNameDuplicate } = require('../utils/validation');
 const { calculateConsecutiveAttendance } = require('../utils/attendance');
@@ -210,11 +210,9 @@ router.put('/update-password', authMiddleware, async (req, res) => {
   const { newPassword, confirmPassword } = req.body;
 
   if (newPassword !== confirmPassword)
-    return res
-      .status(400)
-      .json({
-        message: '새 비밀번호와 재설정한 비밀번호가 일치하지 않습니다.',
-      });
+    return res.status(400).json({
+      message: '새 비밀번호와 재설정한 비밀번호가 일치하지 않습니다.',
+    });
 
   try {
     const user = await User.findById(req.user.id);

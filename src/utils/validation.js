@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../entity/User');
 
 const checkNickNameDuplicate = async (nickName) => {
   const existingUser = await User.findOne({ nickName });

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Server } = require('socket.io');
 const { fetchRandomProblem } = require('./openaiRoutes');
-const User = require('../models/User');
+const User = require('../entity/User');
 const { checkLevelUp } = require('../utils/level');
 
 let users = {};
