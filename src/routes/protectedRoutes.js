@@ -38,7 +38,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *         description: 인증 실패
  */
 router.get('/protected', authMiddleware, (req, res) => {
-    res.json({ msg: 'You have accessed a protected route', user: req.user });
+  res.json({ msg: 'You have accessed a protected route', user: req.user });
 });
 
 module.exports = router;

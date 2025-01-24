@@ -80,31 +80,33 @@ const Rival = require('../models/Rival');
  *                   example: '서버 에러'
  */
 router.post('/register', async (req, res) => {
-    const { userEmail, rivalNickName } = req.body;
+  const { userEmail, rivalNickName } = req.body;
 
-    try {
-        const user = await User.findOne({ email: userEmail });
-        const rival = await User.findOne({ nickName: rivalNickName });
+  try {
+    const user = await User.findOne({ email: userEmail });
+    const rival = await User.findOne({ nickName: rivalNickName });
 
-        if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+    if (!user || !rival)
+      return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
 
-        const userAlreadyHasRival = user.rivals.includes(rival._id);
-        if (userAlreadyHasRival) return res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
+    const userAlreadyHasRival = user.rivals.includes(rival._id);
+    if (userAlreadyHasRival)
+      return res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
 
-        user.rivals.push(rival._id);
-        rival.rivals.push(user._id);
+    user.rivals.push(rival._id);
+    rival.rivals.push(user._id);
 
-        await user.save();
-        await rival.save();
+    await user.save();
+    await rival.save();
 
-        const newRival = new Rival({ userId: user._id, rivalId: rival._id });
-        await newRival.save();
+    const newRival = new Rival({ userId: user._id, rivalId: rival._id });
+    await newRival.save();
 
-        res.status(200).json({ message: '라이벌 등록 성공!' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: '서버 에러' });
-    }
+    res.status(200).json({ message: '라이벌 등록 성공!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '서버 에러' });
+  }
 });
 
 /**
@@ -167,29 +169,32 @@ router.post('/register', async (req, res) => {
  *                   example: '서버 에러'
  */
 router.delete('/remove', async (req, res) => {
-    const { userEmail, rivalNickName } = req.query;
+  const { userEmail, rivalNickName } = req.query;
 
-    try {
-        const user = await User.findOne({ email: userEmail });
-        const rival = await User.findOne({ nickName: rivalNickName });
+  try {
+    const user = await User.findOne({ email: userEmail });
+    const rival = await User.findOne({ nickName: rivalNickName });
 
-        if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+    if (!user || !rival)
+      return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
 
-        const userRivalIndex = user.rivals.indexOf(rival._id);
-        const rivalUserIndex = rival.rivals.indexOf(user._id);
+    const userRivalIndex = user.rivals.indexOf(rival._id);
+    const rivalUserIndex = rival.rivals.indexOf(user._id);
 
-        if (userRivalIndex > -1) user.rivals.splice(userRivalIndex, 1);
-        if (rivalUserIndex > -1) rival.rivals.splice(rivalUserIndex, 1);
+    if (userRivalIndex > -1) user.rivals.splice(userRivalIndex, 1);
+    if (rivalUserIndex > -1) rival.rivals.splice(rivalUserIndex, 1);
 
-        await user.save();
-        await rival.save();
-        await Rival.deleteOne({ userId: user._id, rivalId: rival._id });
+    await user.save();
+    await rival.save();
+    await Rival.deleteOne({ userId: user._id, rivalId: rival._id });
 
-        res.status(200).json({ message: '라이벌 삭제 성공!', userRivals: user.rivals });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: '서버 에러' });
-    }
+    res
+      .status(200)
+      .json({ message: '라이벌 삭제 성공!', userRivals: user.rivals });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '서버 에러' });
+  }
 });
 
 /**
@@ -236,31 +241,39 @@ router.delete('/remove', async (req, res) => {
  *         description: 서버 오류
  */
 router.get('/get-info', async (req, res) => {
-    const { userEmail } = req.query;
+  const { userEmail } = req.query;
 
-    if (!userEmail) return res.status(400).json({ message: '이메일을 입력해주세요.' });
+  if (!userEmail)
+    return res.status(400).json({ message: '이메일을 입력해주세요.' });
 
-    try {
-        const user = await User.findOne({ email: userEmail }).populate('levelId', 'level');
-        if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+  try {
+    const user = await User.findOne({ email: userEmail }).populate(
+      'levelId',
+      'level',
+    );
+    if (!user)
+      return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
 
-        const rivalPromises = user.rivals.map(async (rivalId) => {
-            const rivalUser = await User.findById(rivalId).populate('levelId', 'level');
-            return {
-                nickName: rivalUser.nickName,
-                level: rivalUser.levelId.level,
-            };
-        });
+    const rivalPromises = user.rivals.map(async (rivalId) => {
+      const rivalUser = await User.findById(rivalId).populate(
+        'levelId',
+        'level',
+      );
+      return {
+        nickName: rivalUser.nickName,
+        level: rivalUser.levelId.level,
+      };
+    });
 
-        const rivals = await Promise.all(rivalPromises);
+    const rivals = await Promise.all(rivalPromises);
 
-        res.status(200).json({
-            userLevel: user.levelId.level,
-            rivals,
-        });
-    } catch (error) {
-        res.status(500).json({ message: '서버 오류', error });
-    }
+    res.status(200).json({
+      userLevel: user.levelId.level,
+      rivals,
+    });
+  } catch (error) {
+    res.status(500).json({ message: '서버 오류', error });
+  }
 });
 
 module.exports = router;

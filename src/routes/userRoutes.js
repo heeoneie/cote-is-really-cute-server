@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const authMiddleware = require('../middlewares/authMiddleware');
-const { checkNickNameDuplicate } = require("../utils/validation");
-const { calculateConsecutiveAttendance } = require("../utils/attendance");
-const sendEmail = require("../utils/email");
+const { checkNickNameDuplicate } = require('../utils/validation');
+const { calculateConsecutiveAttendance } = require('../utils/attendance');
+const sendEmail = require('../utils/email');
 
 /**
  * @swagger
@@ -68,39 +68,47 @@ const sendEmail = require("../utils/email");
  *         description: 서버 오류
  */
 router.get('/search', async (req, res) => {
-    const { type, value, userEmail } = req.query;
+  const { type, value, userEmail } = req.query;
 
-    if (!type || !value) return res.status(400).json({ message: '검색할 유형과 값을 입력해주세요.' });
+  if (!type || !value)
+    return res
+      .status(400)
+      .json({ message: '검색할 유형과 값을 입력해주세요.' });
 
-    let query;
-    if (type === 'nickName') query = { nickName: { $regex: value, $options: 'i' } };
-     else if (type === 'email') query = { email: { $regex: value, $options: 'i' } };
-     else return res.status(400).json({ message: '유효하지 않은 검색 유형입니다.' });
+  let query;
+  if (type === 'nickName')
+    query = { nickName: { $regex: value, $options: 'i' } };
+  else if (type === 'email')
+    query = { email: { $regex: value, $options: 'i' } };
+  else
+    return res.status(400).json({ message: '유효하지 않은 검색 유형입니다.' });
 
-    try {
-        const currentUser = await User.findOne({ email: userEmail });
-        if (!currentUser) return res.status(404).json({ message: '현재 유저를 찾을 수 없습니다.' });
+  try {
+    const currentUser = await User.findOne({ email: userEmail });
+    if (!currentUser)
+      return res.status(404).json({ message: '현재 유저를 찾을 수 없습니다.' });
 
-        const userRivalIds = currentUser.rivals;
-        query._id = { $ne: currentUser._id };
+    const userRivalIds = currentUser.rivals;
+    query._id = { $ne: currentUser._id };
 
-        const users = await User.find(query)
-            .populate('levelId', 'level')
-            .select('-password -__v -email');
+    const users = await User.find(query)
+      .populate('levelId', 'level')
+      .select('-password -__v -email');
 
-        if (users.length === 0) return res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
+    if (users.length === 0)
+      return res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
 
-        const result = users.map(user =>({
-            nickName: user.nickName,
-            baekjoonTier: user.baekjoonTier,
-            level: user.levelId.level,
-            isRival: userRivalIds.toString() === user._id.toString()
-        }));
+    const result = users.map((user) => ({
+      nickName: user.nickName,
+      baekjoonTier: user.baekjoonTier,
+      level: user.levelId.level,
+      isRival: userRivalIds.toString() === user._id.toString(),
+    }));
 
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ message: '서버 오류', error });
-    }
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: '서버 오류', error });
+  }
 });
 
 /**
@@ -140,21 +148,22 @@ router.get('/search', async (req, res) => {
  *         description: 서버 에러
  */
 router.put('/update-nickName', authMiddleware, async (req, res) => {
-    const { newNickName } = req.body;
+  const { newNickName } = req.body;
 
-    try {
-        const isNickNameDuplicate = await checkNickNameDuplicate(newNickName);
-        if (isNickNameDuplicate) return res.status(400).json({ msg: '이미 사용 중인 닉네임입니다.' });
+  try {
+    const isNickNameDuplicate = await checkNickNameDuplicate(newNickName);
+    if (isNickNameDuplicate)
+      return res.status(400).json({ msg: '이미 사용 중인 닉네임입니다.' });
 
-        const user = await User.findById(req.user.id);
-        user.nickName = newNickName;
-        await user.save();
+    const user = await User.findById(req.user.id);
+    user.nickName = newNickName;
+    await user.save();
 
-        res.status(200).json({ message: '닉네임이 성공적으로 변경되었습니다.' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: '서버 에러' });
-    }
+    res.status(200).json({ message: '닉네임이 성공적으로 변경되었습니다.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: '서버 에러' });
+  }
 });
 
 /**
@@ -198,22 +207,28 @@ router.put('/update-nickName', authMiddleware, async (req, res) => {
  *         description: 서버 에러
  */
 router.put('/update-password', authMiddleware, async (req, res) => {
-    const { newPassword, confirmPassword } = req.body;
+  const { newPassword, confirmPassword } = req.body;
 
-    if (newPassword !== confirmPassword) return res.status(400).json({ message: '새 비밀번호와 재설정한 비밀번호가 일치하지 않습니다.' });
+  if (newPassword !== confirmPassword)
+    return res
+      .status(400)
+      .json({
+        message: '새 비밀번호와 재설정한 비밀번호가 일치하지 않습니다.',
+      });
 
-    try {
-        const user = await User.findById(req.user.id);
-        if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user)
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
 
-        user.password = newPassword;
-        await user.save();
+    user.password = newPassword;
+    await user.save();
 
-        res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: '서버 에러' });
-    }
+    res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: '서버 에러' });
+  }
 });
 
 /**
@@ -257,47 +272,52 @@ router.put('/update-password', authMiddleware, async (req, res) => {
  */
 
 router.post('/attend', async (req, res) => {
-    const { userEmail, attendanceDate } = req.body;
-    try {
-        const user = await User.findOne({ email: userEmail });
-        if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+  const { userEmail, attendanceDate } = req.body;
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user)
+      return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
 
-        if (!user.attendanceDates.includes(attendanceDate)) {
-            user.attendanceDates.push(attendanceDate);
-            await user.save();
+    if (!user.attendanceDates.includes(attendanceDate)) {
+      user.attendanceDates.push(attendanceDate);
+      await user.save();
+    }
+
+    const today = new Date(attendanceDate).toISOString().split('T')[0];
+    const rivals = user.rivals;
+
+    if (rivals.length === 0) console.log('라이벌이 없습니다.');
+    else {
+      for (const rivalId of rivals) {
+        const rivalUser = await User.findById(rivalId);
+
+        if (!rivalUser) {
+          console.log(`${rivalId}에 해당하는 유저를 찾을 수 없습니다.`);
+          continue;
         }
 
-        const today = new Date(attendanceDate).toISOString().split('T')[0];
-        const rivals = user.rivals;
+        const hasAttended = rivalUser.attendanceDates.some(
+          (date) => new Date(date).toISOString().split('T')[0] === today,
+        );
 
-        if (rivals.length === 0) console.log('라이벌이 없습니다.');
-        else {
-            for (const rivalId of rivals) {
-                const rivalUser = await User.findById(rivalId);
-
-                if (!rivalUser) {
-                    console.log(`${rivalId}에 해당하는 유저를 찾을 수 없습니다.`);
-                    continue;
-                }
-
-                const hasAttended = rivalUser.attendanceDates.some(date =>
-                    new Date(date).toISOString().split('T')[0] === today
-                );
-
-                if (!hasAttended) {
-                    await sendEmail(rivalUser.email, '오늘 문제 풀기 알림', `
+        if (!hasAttended) {
+          await sendEmail(
+            rivalUser.email,
+            '오늘 문제 풀기 알림',
+            `
                 안녕하세요 ${rivalUser.nickName}님,
                 ${user.nickName}님이 오늘 문제를 풀었습니다. 당신도 오늘 문제를 풀어보세요!
-            `);
-                }
-            }
+            `,
+          );
         }
-
-        res.status(200).json({ message: '출석 성공!' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: '서버 에러' });
+      }
     }
+
+    res.status(200).json({ message: '출석 성공!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '서버 에러' });
+  }
 });
 
 /**
@@ -330,17 +350,20 @@ router.post('/attend', async (req, res) => {
  *         description: 서버 에러
  */
 router.get('/attend/:userEmail', async (req, res) => {
-    const { userEmail } = req.params;
-    try {
-        const user = await User.findOne({ email: userEmail });
-        if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+  const { userEmail } = req.params;
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user)
+      return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
 
-        const consecutiveDays = calculateConsecutiveAttendance(user.attendanceDates);
-        res.status(200).json({ consecutiveDays });
-    } catch (error) {
-        console.error('Error fetching user attendance:', error);
-        res.status(500).json({ message: '서버 에러' });
-    }
+    const consecutiveDays = calculateConsecutiveAttendance(
+      user.attendanceDates,
+    );
+    res.status(200).json({ consecutiveDays });
+  } catch (error) {
+    console.error('Error fetching user attendance:', error);
+    res.status(500).json({ message: '서버 에러' });
+  }
 });
 
 module.exports = router;

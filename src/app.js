@@ -10,9 +10,9 @@ const { router: openaiRoutes } = require('./routes/openaiRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rivalRoutes = require('./routes/rivalRoutes');
-const { setupSocket, router: battleRoutes } = require("./routes/battleRoutes");
-const { createInitialLevels }= require("./utils/level");
-const { connection } = require("mongoose");
+const { setupSocket, router: battleRoutes } = require('./routes/battleRoutes');
+const { createInitialLevels } = require('./utils/level');
+const { connection } = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
