@@ -1,8 +1,8 @@
 import { DataSource } from 'typeorm';
-import { User } from '../entity/User';
-import { Rival } from '../entity/Rival';
-import { Level } from '../entity/Level';
-import { Attendance } from '../entity/Attendance';
+import { User } from '../entity/User.js';
+import { Rival } from '../entity/Rival.js';
+import { Level } from '../entity/Level.js';
+import { Attendance } from '../entity/Attendance.js';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',

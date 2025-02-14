@@ -1,28 +1,21 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
-const setupSwagger = require('./swagger/swagger');
-const http = require('http');
-const healthRoutes = require('./routes/healthRoutes');
-const authRoutes = require('./routes/authRoutes');
-const { router: openaiRoutes } = require('./routes/openaiRoutes');
-const protectedRoutes = require('./routes/protectedRoutes');
-const userRoutes = require('./routes/userRoutes');
-const rivalRoutes = require('./routes/rivalRoutes');
-const { setupSocket, router: battleRoutes } = require('./routes/battleRoutes');
-const { createInitialLevels } = require('./utils/level');
-const { connection } = require('mongoose');
+import express from 'express';
+import cors from 'cors';
+import connectDB from './config/db.js';
+import setupSwagger from './swagger/swagger.js';
+import http from 'http';
+import healthRoutes from './routes/healthRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import { openaiRoutes } from './routes/openaiRoutes.js';
+import protectedRoutes from './routes/protectedRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import rivalRoutes from './routes/rivalRoutes.js';
+import { setupSocket, battleRoutes } from './routes/battleRoutes.js';
 
 const app = express();
 const server = http.createServer(app);
 
 connectDB();
-
-connection.once('open', async () => {
-  console.log('MongoDB 연결 후 레벨 초기화 실행');
-  await createInitialLevels();
-});
 
 app.use(cors());
 app.use(express.json());
