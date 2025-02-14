@@ -1,8 +1,8 @@
 import { DataSource } from 'typeorm';
-import { User } from '../entity/User.js';
-import { Rival } from '../entity/Rival.js';
-import { Level } from '../entity/Level.js';
-import { Attendance } from '../entity/Attendance.js';
+import { User } from '../entity/User';
+import { Rival } from '../entity/Rival';
+import { Level } from '../entity/Level';
+import { Attendance } from '../entity/Attendance';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -15,7 +15,7 @@ export const AppDataSource = new DataSource({
   synchronize: true,
 });
 
-const connectDB = async () => {
+const connectDB = async (): Promise<void> => {
   try {
     await AppDataSource.initialize();
     console.log('MySQL connected!');
