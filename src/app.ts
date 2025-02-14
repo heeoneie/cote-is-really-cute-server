@@ -1,16 +1,16 @@
 require('dotenv').config();
 import express from 'express';
 import cors from 'cors';
-import connectDB from './config/db.js';
-import setupSwagger from './swagger/swagger.js';
+import connectDB from './config/db';
+import setupSwagger from './swagger/swagger';
 import http from 'http';
-import healthRoutes from './routes/healthRoutes.js';
-import authRoutes from './routes/authRoutes.js';
-import { openaiRoutes } from './routes/openaiRoutes.js';
-import protectedRoutes from './routes/protectedRoutes.js';
-import userRoutes from './routes/userRoutes.js';
-import rivalRoutes from './routes/rivalRoutes.js';
-import { setupSocket, battleRoutes } from './routes/battleRoutes.js';
+import healthRoutes from './routes/healthRoutes';
+import authRoutes from './routes/authRoutes';
+import { openaiRoutes } from './routes/openaiRoutes';
+import protectedRoutes from './routes/protectedRoutes';
+import userRoutes from './routes/userRoutes';
+import rivalRoutes from './routes/rivalRoutes';
+import { setupSocket, battleRoutes } from './routes/battleRoutes';
 
 const app = express();
 const server = http.createServer(app);

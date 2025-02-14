@@ -9,8 +9,8 @@ export class User {
   userId: number;
   @Column({ name: 'email', type: 'varchar', nullable: false, unique: true })
   email: string;
-  @Column({ name: 'nickname', type: 'varchar', nullable: false, unique: true })
-  nickname: string;
+  @Column({ name: 'nickName', type: 'varchar', nullable: false, unique: true })
+  nickName: string;
   @Column({ name: 'password', type: 'varchar', nullable: false })
   password: string;
   @Column({ name: 'experience', type: 'int', nullable: false })
