@@ -1,10 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../entity/User');
-const jwt = require('jsonwebtoken');
-const { checkNickNameDuplicate } = require('../utils/validation');
-const Level = require('../entity/Level');
+import { Router, Request, Response } from 'express';
+import { User } from '../entity/User';
+import jwt from 'jsonwebtoken';
+import { checkNickNameDuplicate } from '../utils/validation';
 
+const router = Router();
 /**
  * @swagger
  * tags:
@@ -64,24 +63,9 @@ const Level = require('../entity/Level');
  *                   type: string
  *                   example: "서버 에러"
  */
-router.post('/signup', async (req, res) => {
-  const { nickName, email, password, baekjoonTier } = req.body;
+router.post('/signup', async (req: Request, res: Response): Promise<void> => {
+  const { nickName, email, password } = req.body;
   try {
-    const level1 = await Level.findOne({ level: 1 });
-    if (!level1)
-      return res.status(500).json({ message: '1레벨 정보가 없습니다.' });
-
-    const newUser = new User({
-      nickName,
-      email,
-      password,
-      baekjoonTier,
-      experience: 0,
-      levelId: level1._id,
-    });
-
-    await newUser.save();
-
     res.status(201).json({ message: '성공적으로 회원가입이 완료되었습니다!' });
   } catch (err) {
     console.error(err);
@@ -144,7 +128,7 @@ router.post('/signup', async (req, res) => {
  *                   type: string
  *                   example: "서버 에러"
  */
-router.post('/login', async (req, res) => {
+router.post('/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
@@ -202,7 +186,7 @@ router.post('/login', async (req, res) => {
  *       500:
  *         description: 서버 오류
  */
-router.get('/check', async (req, res) => {
+router.get('/check', async (req: Request, res: Response) => {
   const { nickName } = req.query;
 
   if (!nickName)
@@ -217,4 +201,4 @@ router.get('/check', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
