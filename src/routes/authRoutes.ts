@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { User } from '../entity/User';
 import jwt from 'jsonwebtoken';
 import { checkNickNameDuplicate } from '../utils/validation';
+import { userRepository } from '../repository/repository';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 /**
@@ -66,6 +68,15 @@ const router = Router();
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   const { nickName, email, password } = req.body;
   try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = userRepository.create({
+      nickName,
+      email,
+      password: hashedPassword,
+    });
+
+    await userRepository.save(newUser);
     res.status(201).json({ message: '성공적으로 회원가입이 완료되었습니다!' });
   } catch (err) {
     console.error(err);

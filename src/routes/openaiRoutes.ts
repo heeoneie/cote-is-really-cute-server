@@ -1,6 +1,7 @@
-const express = require('express');
-const OpenAI = require('openai');
-const router = express.Router();
+import { Router } from 'express';
+import OpenAI from 'openai';
+
+const router = Router();
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -150,7 +151,8 @@ router.post('/grade', async (req, res) => {
     res.status(500).json({ error: '채점 중 오류가 발생했습니다.' });
   }
 });
-const fetchRandomProblem = async () => {
+
+export const fetchRandomProblem = async () => {
   try {
     const problem = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
@@ -184,4 +186,4 @@ router.get('/get-random-problem', async (req, res) => {
   }
 });
 
-module.exports = { router, fetchRandomProblem };
+export default router;

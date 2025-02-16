@@ -6,20 +6,20 @@ import { Level } from './Level';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn({ name: 'userId', type: 'int' })
-  userId: number;
+  userId!: number;
   @Column({ name: 'email', type: 'varchar', nullable: false, unique: true })
-  email: string;
+  email!: string;
   @Column({ name: 'nickName', type: 'varchar', nullable: false, unique: true })
-  nickName: string;
+  nickName!: string;
   @Column({ name: 'password', type: 'varchar', nullable: false })
-  password: string;
+  password!: string;
   @Column({ name: 'experience', type: 'int', nullable: false })
-  experience: number;
+  experience!: number;
 
   @OneToMany(() => Level, (level: Level) => level.user)
-  level: Level;
+  level!: Level;
   @OneToMany(() => Attendance, (attendance: Attendance) => attendance.user)
-  attendances: Attendance[];
+  attendances!: Attendance[];
   @OneToMany(() => Rival, (rival: Rival) => rival.user)
-  rivals: Rival[];
+  rivals!: Rival[];
 }

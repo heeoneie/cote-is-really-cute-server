@@ -1,10 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const User = require('../entity/User');
-const authMiddleware = require('../middlewares/authMiddleware');
-const { checkNickNameDuplicate } = require('../utils/validation');
-const { calculateConsecutiveAttendance } = require('../utils/attendance');
-const sendEmail = require('../utils/email');
+import { User } from '../entity/User';
+import { authMiddleware } from '../middlewares/authMiddleware';
+import { checkNickNameDuplicate } from '../utils/validation';
+import { calculateConsecutiveAttendance } from '../utils/attendance';
+import { sendEmail } from '../utils/email';
 
 /**
  * @swagger
@@ -364,4 +364,4 @@ router.get('/attend/:userEmail', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

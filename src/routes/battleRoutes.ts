@@ -1,16 +1,14 @@
-const express = require('express');
-const router = express.Router();
-const { Server } = require('socket.io');
-const { fetchRandomProblem } = require('./openaiRoutes');
-const User = require('../entity/User');
-const { checkLevelUp } = require('../utils/level');
+import { Server } from 'socket.io';
+import { fetchRandomProblem } from './openaiRoutes';
+import { User } from '../entity/User';
+import { checkLevelUp } from '../utils/level';
 
 let users = {};
 let waitingQueue = [];
 let battles = {};
 let io;
 
-const setupSocket = (server) => {
+export const setupSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: [
@@ -105,5 +103,3 @@ const setupSocket = (server) => {
     });
   });
 };
-
-module.exports = { router, setupSocket };

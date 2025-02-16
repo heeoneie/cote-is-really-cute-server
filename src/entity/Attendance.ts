@@ -10,11 +10,11 @@ import { User } from './User';
 @Entity('attendances')
 export class Attendance {
   @PrimaryGeneratedColumn({ name: 'attendanceId', type: 'int' })
-  attendanceId: number;
+  attendanceId!: number;
   @Column({ name: 'attendanceDates', type: 'date' })
-  attendanceDates: Date;
+  attendanceDates!: Date;
 
   @ManyToOne(() => User, (user) => user.attendances)
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user!: User;
 }

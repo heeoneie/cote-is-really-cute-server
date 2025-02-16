@@ -10,13 +10,13 @@ import { User } from './User';
 @Entity('rivals')
 export class Rival {
   @PrimaryGeneratedColumn({ name: 'rivalId', type: 'int' })
-  rivalId: number;
+  rivalId!: number;
   @Column({ name: 'email', type: 'varchar', nullable: false, unique: true })
-  email: string;
+  email!: string;
   @Column({ name: 'nickName', type: 'varchar', nullable: false, unique: true })
-  nickName: string;
+  nickName!: string;
 
   @ManyToOne(() => User, (user: User) => user.rivals)
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user!: User;
 }

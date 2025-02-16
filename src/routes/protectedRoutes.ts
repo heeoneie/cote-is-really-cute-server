@@ -1,7 +1,7 @@
-const express = require('express');
-const router = express.Router();
-const authMiddleware = require('../middlewares/authMiddleware');
+import { Router } from 'express';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
+const router = Router();
 /**
  * @swagger
  * tags:
@@ -38,7 +38,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *         description: 인증 실패
  */
 router.get('/protected', authMiddleware, (req, res) => {
-  res.json({ msg: 'You have accessed a protected route', user: req.user });
+  res.json({ msg: 'You have accessed a protected route' });
 });
 
-module.exports = router;
+export default router;

@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const User = require('../entity/User');
-const Rival = require('../entity/Rival');
+import { User } from '../entity/User';
+import { Rival } from '../entity/Rival';
+import exp from 'node:constants';
 
 /**
  * @swagger
@@ -276,4 +277,4 @@ router.get('/get-info', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
