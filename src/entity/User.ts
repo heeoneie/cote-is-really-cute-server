@@ -17,7 +17,7 @@ export class User {
   experience!: number;
 
   @OneToMany(() => Level, (level: Level) => level.user)
-  level!: Level;
+  level!: number;
   @OneToMany(() => Attendance, (attendance: Attendance) => attendance.user)
   attendances!: Attendance[];
   @OneToMany(() => Rival, (rival: Rival) => rival.user)

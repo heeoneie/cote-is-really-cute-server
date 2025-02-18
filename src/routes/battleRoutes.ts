@@ -1,14 +1,27 @@
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { fetchRandomProblem } from './openaiRoutes';
 import { User } from '../entity/User';
-import { checkLevelUp } from '../utils/level';
+import { userRepository } from '../repository/repository';
 
-let users = {};
-let waitingQueue = [];
-let battles = {};
-let io;
+interface Battle {
+  players: string[];
+  socketIds: string[];
+  problemNumber: number;
+  isMatched: boolean;
+  startTime: number;
+}
 
-export const setupSocket = (server) => {
+interface UserData {
+  email: string;
+  socketId: string;
+}
+
+let users: { [key: string]: string } = {};
+let waitingQueue: UserData[] = [];
+let battles: { [key: string]: Battle } = {};
+let io: Server;
+
+export const setupSocket = (server: any): void => {
   io = new Server(server, {
     cors: {
       origin: [
@@ -20,9 +33,10 @@ export const setupSocket = (server) => {
     },
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', (socket: Socket) => {
     console.log('A user connected:', socket.id);
-    socket.on('joinBattle', async (userEmail) => {
+
+    socket.on('joinBattle', async (userEmail: string) => {
       console.log(
         `Join request received for: ${userEmail} with socketId: ${socket.id}`,
       );
@@ -31,6 +45,7 @@ export const setupSocket = (server) => {
 
       if (waitingQueue.length > 0) {
         const opponent = waitingQueue.pop();
+        if (!opponent) return;
         const matchId = `match_${Date.now()}`;
         const problem = await fetchRandomProblem();
 
@@ -49,52 +64,72 @@ export const setupSocket = (server) => {
       }
     });
 
-    socket.on('submitSolution', async (data) => {
-      const { problemNumber, userEmail, isCorrect } = data;
-      if (isCorrect) {
-        const match = Object.values(battles).find(
-          (battle) =>
-            battle.players.includes(userEmail) &&
-            battle.problemNumber === problemNumber,
-        );
-        if (match) {
-          try {
-            const winner = await User.findOne({ email: userEmail });
-            const loserEmail = match.players.find(
-              (player) => player !== userEmail,
-            );
-            const loser = await User.findOne({ email: loserEmail });
-            const winnerSocketId = Object.keys(users).find(
-              (id) => users[id] === userEmail,
-            );
-            const loserSocketId = Object.keys(users).find(
-              (id) => users[id] === loserEmail,
-            );
+    socket.on(
+      'submitSolution',
+      async (data: {
+        problemNumber: number;
+        userEmail: string;
+        isCorrect: boolean;
+      }) => {
+        const { problemNumber, userEmail, isCorrect } = data;
+        if (isCorrect) {
+          const match = Object.values(battles).find(
+            (battle) =>
+              battle.players.includes(userEmail) &&
+              battle.problemNumber === problemNumber,
+          );
 
-            const experienceAwarded = 10;
-            winner.experience += experienceAwarded;
-            await winner.save();
+          if (match) {
+            try {
+              const winner = await userRepository.findOne({
+                where: { email: userEmail },
+              });
+              const loserEmail = match.players.find(
+                (player) => player !== userEmail,
+              );
+              const loser = await userRepository.findOne({
+                where: { email: loserEmail },
+              });
+              const winnerSocketId = Object.keys(users).find(
+                (id) => users[id] === userEmail,
+              );
+              const loserSocketId = Object.keys(users).find(
+                (id) => users[id] === loserEmail,
+              );
 
-            await checkLevelUp(winner);
+              const experienceAwarded = 10;
+              if (winner) {
+                winner.experience += experienceAwarded;
+                await userRepository.save(winner);
 
-            const res = {
-              winner: winner.nickName,
-              loser: loser.nickName,
-              problemId: problemNumber,
-              experience: experienceAwarded,
-            };
-            io.to(winnerSocketId).emit('battleEnded', res);
-            io.to(loserSocketId).emit('battleEnded', res);
-          } catch (error) {
-            console.error('Error finding user:', error);
+                await checkLevelUp(winner);
+
+                const res = {
+                  winner: winner.nickName,
+                  loser: loser?.nickName,
+                  problemId: problemNumber,
+                  experience: experienceAwarded,
+                };
+
+                if (winnerSocketId)
+                  io.to(winnerSocketId).emit('battleEnded', res);
+                if (loserSocketId)
+                  io.to(loserSocketId).emit('battleEnded', res);
+              }
+            } catch (error) {
+              console.error('Error finding user:', error);
+            }
           }
         }
-      }
-    });
+      },
+    );
 
-    socket.on('battleEnded', async ({ winnerEmail }) => {
-      console.log(`Battle ended! Winner: ${winnerEmail}`);
-    });
+    socket.on(
+      'battleEnded',
+      async ({ winnerEmail }: { winnerEmail: string }) => {
+        console.log(`Battle ended! Winner: ${winnerEmail}`);
+      },
+    );
 
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
@@ -103,3 +138,11 @@ export const setupSocket = (server) => {
     });
   });
 };
+
+async function checkLevelUp(user: User): Promise<void> {
+  if (user.experience >= 100) {
+    user.level += 1;
+    user.experience = 0; // 경험치 초기화
+    await userRepository.save(user);
+  }
+}
