@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { User } from '../entity/User';
 import jwt from 'jsonwebtoken';
 import { checkNickNameDuplicate } from '../utils/validation';
 import { userRepository } from '../repository/repository';
@@ -139,31 +138,38 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
  *                   type: string
  *                   example: "서버 에러"
  */
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(400).json({ msg: '이메일을 다시 입력해주세요.' });
+    const user = await userRepository.findOne({ where: { email } });
+    if (!user) {
+      res.status(400).json({ msg: '이메일을 다시 입력해주세요.' });
+      return;
+    }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch)
-      return res.status(400).json({ msg: '비밀번호를 다시 입력해주세요.' });
+    const storedPassword = user.password;
+    const isMatch = await bcrypt.compare(password, storedPassword);
 
+    if (!isMatch) {
+      res.status(400).json({ msg: '비밀번호를 다시 입력해주세요.' });
+      return;
+    }
     const payload = {
-      id: user.id,
+      id: user.userId,
       email: user.email,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
       expiresIn: '1h',
     });
 
     res.json({ token });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('서버 에러');
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.error(err.message);
+      res.status(500).send('서버 에러');
+    }
   }
 });
 
@@ -197,11 +203,13 @@ router.post('/login', async (req: Request, res: Response) => {
  *       500:
  *         description: 서버 오류
  */
-router.get('/check', async (req: Request, res: Response) => {
+router.get('/check', async (req: Request, res: Response): Promise<void> => {
   const { nickName } = req.query;
 
-  if (!nickName)
-    return res.status(400).json({ message: '닉네임을 입력해주세요.' });
+  if (!nickName || typeof nickName !== 'string') {
+    res.status(400).json({ message: '닉네임을 입력해주세요.' });
+    return;
+  }
 
   try {
     const isDuplicate = await checkNickNameDuplicate(nickName);
