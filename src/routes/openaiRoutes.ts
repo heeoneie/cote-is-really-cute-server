@@ -1,5 +1,22 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import OpenAI from 'openai';
+
+type ProblemRecommendationRequest = {
+  category: string;
+};
+
+type CodeGradingRequest = {
+  data: {
+    problemTitle: string;
+    userLanguage: string;
+    userCode: string;
+  };
+};
+
+type RandomProblem = {
+  problemNumber: number;
+  problemTitle: string;
+};
 
 const router = Router();
 
@@ -51,30 +68,33 @@ const openai = new OpenAI({
  *                   type: string
  *                   example: '추천 시스템에서 오류가 발생했습니다.'
  */
-router.post('/recommendProblems', async (req, res) => {
-  const { category } = req.body;
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a Baekjun problem recommendation system. Provide only the problem numbers and titles without any additional commentary.',
-        },
-        {
-          role: 'user',
-          content: `백준에서 ${category} 문제를 초급, 중급, 고급으로 나누어 문제 번호와 제목을 배열 형식으로 3개씩 제공해 주세요. 예: 초급: [번호 - 제목], 중급: [번호 - 제목], 고급: [번호 - 제목].`,
-        },
-      ],
-      max_tokens: 150,
-    });
-    res.send(response.choices[0].message.content);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: '추천 시스템에서 오류가 발생했습니다.' });
-  }
-});
+router.post(
+  '/recommendation',
+  async (req: Request<{}, {}, ProblemRecommendationRequest>, res: Response) => {
+    const { category } = req.body;
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a Baekjun problem recommendation system. Provide only the problem numbers and titles without any additional commentary.',
+          },
+          {
+            role: 'user',
+            content: `백준에서 ${category} 문제를 초급, 중급, 고급으로 나누어 문제 번호와 제목을 배열 형식으로 3개씩 제공해 주세요. 예: 초급: [번호 - 제목], 중급: [번호 - 제목], 고급: [번호 - 제목].`,
+          },
+        ],
+        max_tokens: 150,
+      });
+      res.send(response.choices[0].message.content);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: '추천 시스템에서 오류가 발생했습니다.' });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -124,35 +144,50 @@ router.post('/recommendProblems', async (req, res) => {
  *                   type: string
  *                   example: '채점 중 오류가 발생했습니다.'
  */
-router.post('/grade', async (req, res) => {
-  const { problemTitle, userLanguage, userCode } = req.body.data;
+router.post(
+  '/grade',
+  async (
+    req: Request<{}, {}, CodeGradingRequest>,
+    res: Response,
+  ): Promise<void> => {
+    const { problemTitle, userLanguage, userCode } = req.body.data;
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a grading assistant. Respond only with true or false based on the correctness of the code.',
+          },
+          {
+            role: 'user',
+            content: `코드를 검증해주세요. 문제: "${problemTitle}", 언어: "${userLanguage}", 코드: "${userCode}". 올바른 경우 "true", 그렇지 않은 경우 "false"만 반환하세요.`,
+          },
+        ],
+        max_tokens: 5,
+      });
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a grading assistant. Respond only with true or false based on the correctness of the code.',
-        },
-        {
-          role: 'user',
-          content: `코드를 검증해주세요. 문제: "${problemTitle}", 언어: "${userLanguage}", 코드: "${userCode}". 올바른 경우 "true", 그렇지 않은 경우 "false"만 반환하세요.`,
-        },
-      ],
-      max_tokens: 5,
-    });
-    const answer = response.choices[0].message.content.trim().toLowerCase();
-    const result = answer.startsWith('true');
-    res.send(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: '채점 중 오류가 발생했습니다.' });
-  }
-});
+      const answer = response.choices?.[0]?.message?.content
+        ?.trim()
+        .toLowerCase();
 
-export const fetchRandomProblem = async () => {
+      if (!answer) {
+        console.error('⚠️ OpenAI 응답이 비어 있습니다:', response);
+        res.status(500).json({ error: 'AI 응답이 올바르지 않습니다.' });
+        return;
+      }
+
+      const result = answer.startsWith('true');
+      res.json({ isCorrect: result });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: '채점 중 오류가 발생했습니다.' });
+    }
+  },
+);
+
+export const fetchRandomProblem = async (): Promise<RandomProblem> => {
   try {
     const problem = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
@@ -166,18 +201,23 @@ export const fetchRandomProblem = async () => {
       max_tokens: 10,
     });
 
-    const problemData = problem.choices[0].message.content;
+    const problemData = problem.choices?.[0]?.message.content;
+
+    if (!problemData || !problemData.trim())
+      throw new Error('OpenAI 응답이 비어 있습니다.');
+
     const parts = problemData.split(/\s+/);
-    const problemNumber = parts[0];
+    const problemNumber = parseInt(parts[0], 10);
     const problemTitle = parts.slice(1).join(' ');
 
-    return { problemNumber: parseInt(problemNumber), problemTitle };
+    return { problemNumber, problemTitle };
   } catch (error) {
     console.error('문제 가져오기 중 오류 발생:', error);
     throw error;
   }
 };
-router.get('/get-random-problem', async (req, res) => {
+
+router.get('/get-random-problem', async (req: Request, res: Response) => {
   try {
     const problem = await fetchRandomProblem();
     res.json(problem);
