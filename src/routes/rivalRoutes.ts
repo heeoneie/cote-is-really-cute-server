@@ -1,22 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { User } from '../entity/User';
 import { rivalRepository, userRepository } from '../repository/repository';
 
 const router = Router();
-
-interface RegisterRivalRequest {
-  userEmail: string;
-  rivalNickName: string;
-}
-
-interface RemoveRivalQuery {
-  userEmail: string;
-  rivalNickName: string;
-}
-
-interface GetRivalInfoQuery {
-  userEmail: string;
-}
 
 /**
  * @swagger
@@ -97,7 +82,7 @@ interface GetRivalInfoQuery {
 router.post(
   '/register',
   async (
-    req: Request<{}, {}, RegisterRivalRequest>,
+    req: Request<{}, {}, { userEmail: string; rivalNickName: string }>,
     res: Response,
   ): Promise<void> => {
     const { userEmail, rivalNickName } = req.body;
@@ -119,7 +104,7 @@ router.post(
       }
 
       const userAlreadyHasRival = user.rivals.some(
-        (r) => r.rivalId === rival.userId,
+        (r) => r.rivalId === rival.rivalId,
       );
 
       if (userAlreadyHasRival) {
@@ -127,7 +112,7 @@ router.post(
         return;
       }
 
-      const newRival = rivalRepository.create({ user, rivalId: rival.userId });
+      const newRival = rivalRepository.create({ user, rivalId: rival.rivalId });
       await rivalRepository.save(newRival);
 
       res.status(200).json({ message: '라이벌 등록 성공!' });
@@ -200,7 +185,7 @@ router.post(
 router.delete(
   '/remove',
   async (
-    req: Request<{}, {}, {}, RemoveRivalQuery>,
+    req: Request<{}, {}, {}, { userEmail: string; rivalNickName: string }>,
     res: Response,
   ): Promise<void> => {
     const { userEmail, rivalNickName } = req.query;
@@ -282,7 +267,7 @@ router.delete(
 router.get(
   '/get-info',
   async (
-    req: Request<{}, {}, {}, GetRivalInfoQuery>,
+    req: Request<{}, {}, {}, { userEmail: string }>,
     res: Response,
   ): Promise<void> => {
     const { userEmail } = req.query;

@@ -1,11 +1,18 @@
-import express from 'express';
-const router = express.Router();
-import { User } from '../entity/User';
+import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { checkNickNameDuplicate } from '../utils/validation';
 import { calculateConsecutiveAttendance } from '../utils/attendance';
 import { sendEmail } from '../utils/email';
+import { attendanceRepository, userRepository } from '../repository/repository';
+import { ILike, Not } from 'typeorm';
 
+const router = Router();
+
+interface SearchUserQuery {
+  type: 'nickName' | 'email';
+  value: string;
+  userEmail: string;
+}
 /**
  * @swagger
  * tags:
@@ -52,8 +59,6 @@ import { sendEmail } from '../utils/email';
  *                 properties:
  *                   nickName:
  *                     type: string
- *                   baekjoonTier:
- *                     type: string
  *                   level:
  *                     type: integer
  *                   isRival:
@@ -67,49 +72,61 @@ import { sendEmail } from '../utils/email';
  *       500:
  *         description: 서버 오류
  */
-router.get('/search', async (req, res) => {
-  const { type, value, userEmail } = req.query;
 
-  if (!type || !value)
-    return res
-      .status(400)
-      .json({ message: '검색할 유형과 값을 입력해주세요.' });
+router.get(
+  '/search',
+  async (
+    req: Request<{}, {}, {}, SearchUserQuery>,
+    res: Response,
+  ): Promise<void> => {
+    const { type, value, userEmail } = req.query;
 
-  let query;
-  if (type === 'nickName')
-    query = { nickName: { $regex: value, $options: 'i' } };
-  else if (type === 'email')
-    query = { email: { $regex: value, $options: 'i' } };
-  else
-    return res.status(400).json({ message: '유효하지 않은 검색 유형입니다.' });
+    if (!type || !value) {
+      res.status(400).json({ message: '검색할 유형과 값을 입력해주세요.' });
+      return;
+    }
 
-  try {
-    const currentUser = await User.findOne({ email: userEmail });
-    if (!currentUser)
-      return res.status(404).json({ message: '현재 유저를 찾을 수 없습니다.' });
+    try {
+      const currentUser = await userRepository.findOne({
+        where: { email: userEmail },
+        relations: ['rivals'],
+      });
 
-    const userRivalIds = currentUser.rivals;
-    query._id = { $ne: currentUser._id };
+      if (!currentUser) {
+        res.status(404).json({ message: '현재 유저를 찾을 수 없습니다.' });
+        return;
+      }
 
-    const users = await User.find(query)
-      .populate('levelId', 'level')
-      .select('-password -__v -email');
+      const searchCondition =
+        type === 'nickName'
+          ? { nickName: ILike(`%${value}%`), id: Not(currentUser.userId) }
+          : { email: ILike(`%${value}%`), id: Not(currentUser.userId) };
 
-    if (users.length === 0)
-      return res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
+      const users = await userRepository.find({
+        where: searchCondition,
+        relations: ['level'],
+        select: ['userId', 'nickName'],
+      });
 
-    const result = users.map((user) => ({
-      nickName: user.nickName,
-      baekjoonTier: user.baekjoonTier,
-      level: user.levelId.level,
-      isRival: userRivalIds.toString() === user._id.toString(),
-    }));
+      if (users.length === 0) {
+        res.status(404).json({ message: '일치하는 사용자가 없습니다.' });
+        return;
+      }
 
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: '서버 오류', error });
-  }
-});
+      const result = users.map((user) => ({
+        nickName: user.nickName,
+        level: user.level || null,
+        isRival: currentUser.rivals.some(
+          (rival) => rival.rivalId === user.userId,
+        ),
+      }));
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: '서버 오류', error });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -147,24 +164,42 @@ router.get('/search', async (req, res) => {
  *       500:
  *         description: 서버 에러
  */
-router.put('/update-nickName', authMiddleware, async (req, res) => {
-  const { newNickName } = req.body;
+router.put(
+  '/update-nickName',
+  authMiddleware,
+  async (
+    req: Request<{}, {}, { newNickName: string }>,
+    res: Response,
+  ): Promise<void> => {
+    const { newNickName } = req.body;
 
-  try {
-    const isNickNameDuplicate = await checkNickNameDuplicate(newNickName);
-    if (isNickNameDuplicate)
-      return res.status(400).json({ msg: '이미 사용 중인 닉네임입니다.' });
+    try {
+      const isNickNameDuplicate = await checkNickNameDuplicate(newNickName);
+      if (isNickNameDuplicate) {
+        res.status(400).json({ msg: '이미 사용 중인 닉네임입니다.' });
+        return;
+      }
 
-    const user = await User.findById(req.user.id);
-    user.nickName = newNickName;
-    await user.save();
+      const userId = parseInt(req.user.userId, 10);
+      const user = await userRepository.findOne({
+        where: { userId },
+      });
 
-    res.status(200).json({ message: '닉네임이 성공적으로 변경되었습니다.' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: '서버 에러' });
-  }
-});
+      if (!user) {
+        res.status(404).json({ msg: '사용자를 찾을 수 없습니다.' });
+        return;
+      }
+
+      user.nickName = newNickName;
+      await userRepository.save(user);
+
+      res.status(200).json({ message: '닉네임이 성공적으로 변경되었습니다.' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: '서버 에러' });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -206,28 +241,41 @@ router.put('/update-nickName', authMiddleware, async (req, res) => {
  *       500:
  *         description: 서버 에러
  */
-router.put('/update-password', authMiddleware, async (req, res) => {
-  const { newPassword, confirmPassword } = req.body;
+router.put(
+  '/update-password',
+  authMiddleware,
+  async (
+    req: Request<{}, {}, { newPassword: string; confirmPassword: string }>,
+    res: Response,
+  ): Promise<void> => {
+    const { newPassword, confirmPassword } = req.body;
 
-  if (newPassword !== confirmPassword)
-    return res.status(400).json({
-      message: '새 비밀번호와 재설정한 비밀번호가 일치하지 않습니다.',
-    });
+    if (newPassword !== confirmPassword) {
+      res.status(400).json({
+        message: '새 비밀번호와 재설정한 비밀번호가 일치하지 않습니다.',
+      });
+      return;
+    }
 
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user)
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    try {
+      const userId = parseInt(req.user.userId, 10);
+      const user = await userRepository.findOne({ where: { userId } });
+      if (!user) {
+        res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+        return;
+      }
+      user.password = newPassword;
+      await userRepository.save(user);
 
-    user.password = newPassword;
-    await user.save();
-
-    res.status(200).json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: '서버 에러' });
-  }
-});
+      res
+        .status(200)
+        .json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: '서버 에러' });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -269,54 +317,80 @@ router.put('/update-password', authMiddleware, async (req, res) => {
  *         description: 서버 에러
  */
 
-router.post('/attend', async (req, res) => {
-  const { userEmail, attendanceDate } = req.body;
-  try {
-    const user = await User.findOne({ email: userEmail });
-    if (!user)
-      return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+router.post(
+  '/attend',
+  async (
+    req: Request<{}, {}, { userEmail: string; attendanceDate: Date }>,
+    res: Response,
+  ): Promise<void> => {
+    const { userEmail, attendanceDate } = req.body;
+    try {
+      const user = await userRepository.findOne({
+        where: {
+          email: userEmail,
+        },
+        relations: ['rivals', 'attendances'],
+      });
 
-    if (!user.attendanceDates.includes(attendanceDate)) {
-      user.attendanceDates.push(attendanceDate);
-      await user.save();
-    }
+      if (!user) {
+        res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+        return;
+      }
 
-    const today = new Date(attendanceDate).toISOString().split('T')[0];
-    const rivals = user.rivals;
+      const today = new Date(attendanceDate).toISOString().split('T')[0];
+      const hasAlreadyAttended = user.attendances.some(
+        (attendance) =>
+          attendance.attendanceDates.toISOString().split('T')[0] === today,
+      );
 
-    if (rivals.length === 0) console.log('라이벌이 없습니다.');
-    else {
-      for (const rivalId of rivals) {
-        const rivalUser = await User.findById(rivalId);
+      if (!hasAlreadyAttended) {
+        const newAttendance = attendanceRepository.create({
+          attendanceDates: attendanceDate,
+          user,
+        });
+        await attendanceRepository.save(newAttendance);
+      }
 
-        if (!rivalUser) {
-          console.log(`${rivalId}에 해당하는 유저를 찾을 수 없습니다.`);
-          continue;
-        }
+      const rivals = user.rivals ?? [];
 
-        const hasAttended = rivalUser.attendanceDates.some(
-          (date) => new Date(date).toISOString().split('T')[0] === today,
-        );
+      if (rivals.length === 0) console.log('라이벌이 없습니다.');
+      else {
+        for (const rival of rivals) {
+          const rivalUser = await userRepository.findOne({
+            where: { userId: rival.rivalId },
+            relations: ['attendances'],
+          });
 
-        if (!hasAttended) {
-          await sendEmail(
-            rivalUser.email,
-            '오늘 문제 풀기 알림',
-            `
+          if (!rivalUser) {
+            console.log(`${rival.rivalId}에 해당하는 유저를 찾을 수 없습니다.`);
+            continue;
+          }
+
+          const rivalHasAttended = rivalUser.attendances.some(
+            (attendance) =>
+              attendance.attendanceDates.toISOString().split('T')[0] === today,
+          );
+
+          if (!rivalHasAttended) {
+            await sendEmail(
+              rivalUser.email,
+              '오늘 문제 풀기 알림',
+              `
                 안녕하세요 ${rivalUser.nickName}님,
                 ${user.nickName}님이 오늘 문제를 풀었습니다. 당신도 오늘 문제를 풀어보세요!
             `,
-          );
+            );
+          }
         }
       }
-    }
 
-    res.status(200).json({ message: '출석 성공!' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: '서버 에러' });
-  }
-});
+      res.status(200).json({ message: '출석 성공!' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: '서버 에러' });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -347,21 +421,32 @@ router.post('/attend', async (req, res) => {
  *       500:
  *         description: 서버 에러
  */
-router.get('/attend/:userEmail', async (req, res) => {
-  const { userEmail } = req.params;
-  try {
-    const user = await User.findOne({ email: userEmail });
-    if (!user)
-      return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+router.get(
+  '/attend/:userEmail',
+  async (req: Request<{ userEmail: string }>, res: Response): Promise<void> => {
+    const { userEmail } = req.params;
+    try {
+      const user = await userRepository.findOne({
+        where: {
+          email: userEmail,
+        },
+        relations: ['attendances'],
+      });
 
-    const consecutiveDays = calculateConsecutiveAttendance(
-      user.attendanceDates,
-    );
-    res.status(200).json({ consecutiveDays });
-  } catch (error) {
-    console.error('Error fetching user attendance:', error);
-    res.status(500).json({ message: '서버 에러' });
-  }
-});
+      if (!user) {
+        res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+        return;
+      }
+
+      const consecutiveDays: number = calculateConsecutiveAttendance(
+        user.attendances.map((attendance) => attendance.attendanceDates),
+      );
+      res.status(200).json({ consecutiveDays });
+    } catch (error) {
+      console.error('Error fetching user attendance:', error);
+      res.status(500).json({ message: '서버 에러' });
+    }
+  },
+);
 
 export default router;
