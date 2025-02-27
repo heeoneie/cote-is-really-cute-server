@@ -303,7 +303,7 @@ router.get(
       }
 
       const rivalPromises = user.rivals.map(async (rival) => {
-        const rivalUser = await AppDataSource.getRepository(User).findOne({
+        const rivalUser = await userRepository.findOne({
           where: { userId: rival.rivalId },
           relations: ['level'],
         });
@@ -312,14 +312,14 @@ router.get(
 
         return {
           nickName: rivalUser.nickName,
-          level: rivalUser.level.level,
+          level: rivalUser.level,
         };
       });
 
       const rivals = (await Promise.all(rivalPromises)).filter(Boolean);
 
       res.status(200).json({
-        userLevel: user.level?.level || null,
+        userLevel: user.level || null,
         rivals,
       });
     } catch (error) {
