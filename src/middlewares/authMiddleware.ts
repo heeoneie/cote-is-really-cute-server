@@ -1,12 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
-interface RequestWithUser extends Request {
-  user?: JwtPayload | string;
-}
-
 export const authMiddleware = (
-  req: RequestWithUser,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): void => {
@@ -26,7 +22,10 @@ export const authMiddleware = (
   }
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET as string);
+    req.user = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string,
+    ) as JwtPayload;
     next();
   } catch (err) {
     res.status(401).json({ msg: 'Token is not valid or has expired' });
