@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import connectDB from './config/db';
+import connectDB, { AppDataSource } from './config/db';
 import { setupSwagger } from './swagger/swagger';
 import http from 'http';
 import healthRoutes from './routes/healthRoutes';
@@ -40,7 +40,11 @@ app.use('/rival', rivalRoutes);
 
 setupSocket(server);
 
-const port = process.env.PORT;
+if (!process.env.PORT)
+  console.warn(
+    'PORT 환경 변수가 설정되지 않았습니다. 기본값 3000을 사용합니다.',
+  );
+const port = process.env.PORT || '3000';
 const startServer = async () => {
   try {
     server.listen(port, () => {
@@ -54,7 +58,13 @@ const startServer = async () => {
 
 const shutdown = async () => {
   console.log('서버를 종료합니다...');
-  server.close(() => {
+  server.close(async () => {
+    try {
+      await AppDataSource.destroy();
+      console.log('데이터베이스 연결이 정상적으로 종료되었습니다');
+    } catch (error) {
+      console.error('데이터베이스 연결 종료 실패:', error);
+    }
     console.log('서버가 정상적으로 종료되었습니다');
     process.exit(0);
   });
