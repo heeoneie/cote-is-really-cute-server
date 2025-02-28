@@ -6,14 +6,23 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './User';
+import { IsEmail, Length } from 'class-validator';
 
 @Entity('rivals')
 export class Rival {
   @PrimaryGeneratedColumn({ name: 'rivalId', type: 'int' })
   rivalId!: number;
-  @Column({ name: 'email', type: 'varchar', nullable: false, unique: true })
+  @Column({
+    name: 'email',
+    type: 'varchar',
+    length: 255,
+    nullable: false,
+    unique: true,
+  })
+  @IsEmail()
   email!: string;
   @Column({ name: 'nickName', type: 'varchar', nullable: false, unique: true })
+  @Length(2, 30)
   nickName!: string;
 
   @ManyToOne(() => User, (user: User) => user.rivals)
