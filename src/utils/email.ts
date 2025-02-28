@@ -5,6 +5,9 @@ export const sendEmail = async (
   subject: string,
   text: string,
 ): Promise<void> => {
+  if (!to || !subject || !text)
+    throw new Error('이메일 매개변수가 누락되었습니다.');
+
   try {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
