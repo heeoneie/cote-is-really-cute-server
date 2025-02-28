@@ -7,7 +7,7 @@ export const swaggerOptions = {
       {
         url:
           process.env.NODE_ENV === 'production'
-            ? 'https://violent-lea-coteisreallycute-52210e1a.koyeb.app'
+            ? process.env.PRODUCTION_URL
             : `http://localhost:${process.env.PORT}`,
       },
     ],
@@ -18,7 +18,7 @@ export const swaggerOptions = {
       version: '1.0.0',
     },
   },
-  apis: ['./src/routes/*.js'],
+  apis: ['./src/routes/*.{js,ts}'],
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);

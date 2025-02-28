@@ -20,6 +20,8 @@ export const authMiddleware = (
     res.status(401).json({ msg: 'No token provided, authorization denied' });
     return;
   }
+  if (!process.env.JWT_SECRET)
+    throw new Error('JWT_SECRET 환경 변수가 설정되지 않았습니다.');
 
   try {
     req.user = jwt.verify(

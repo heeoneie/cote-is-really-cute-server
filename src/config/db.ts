@@ -16,14 +16,31 @@ export const AppDataSource = new DataSource({
 });
 
 const connectDB = async (): Promise<void> => {
+  const maxRetries = 5;
+  let retries = 0;
   try {
-    await AppDataSource.initialize();
-    console.log('MySQL connected!');
+    while (retries < maxRetries) {
+      try {
+        await AppDataSource.initialize();
+        console.log('MySQL connected!');
+        return;
+      } catch (error) {
+        retries++;
+        console.log(`Connection attempt ${retries} failed. Retrying...`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
+    throw new Error('Failed to connect to database after multiple retries');
   } catch (err) {
-    console.error(
-      err instanceof Error ? err.message : 'Unknown error occurred',
-    );
-    process.exit(1);
+    const errorMessage =
+      err instanceof Error ? err.message : 'Unknown error occurred';
+    console.error(`Database connection failed: ${errorMessage}`);
+    if (process.env.NODE_ENV === 'production') {
+      setTimeout(() => {
+        console.log('Retrying database connection...');
+        connectDB();
+      }, 5000);
+    } else process.exit(1);
   }
 };
 
