@@ -20,6 +20,8 @@ type RandomProblem = {
 
 const router = Router();
 
+if (!process.env.OPENAI_API_KEY)
+  throw new Error('OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.');
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -70,8 +72,21 @@ const openai = new OpenAI({
  */
 router.post(
   '/recommendation',
-  async (req: Request<{}, {}, ProblemRecommendationRequest>, res: Response) => {
+  async (
+    req: Request<{}, {}, ProblemRecommendationRequest>,
+    res: Response,
+  ): Promise<void> => {
     const { category } = req.body;
+
+    if (
+      !category ||
+      typeof category !== 'string' ||
+      category.trim().length === 0
+    ) {
+      res.status(400).json({ error: '유효한 카테고리를 입력해주세요.' });
+      return;
+    }
+
     try {
       const response = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -88,10 +103,17 @@ router.post(
         ],
         max_tokens: 150,
       });
+      if (!response.choices?.[0]?.message?.content)
+        throw new Error('OpenAI API 응답이 예상된 형식이 아닙니다.');
       res.send(response.choices[0].message.content);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: '추천 시스템에서 오류가 발생했습니다.' });
+      if (error instanceof OpenAI.APIError)
+        res
+          .status(error.status || 500)
+          .json({ error: 'OpenAI API 호출 중 오류가 발생했습니다.' });
+      else
+        res.status(500).json({ error: '추천 시스템에서 오류가 발생했습니다.' });
     }
   },
 );
@@ -152,6 +174,12 @@ router.post(
   ): Promise<void> => {
     const { problemTitle, userLanguage, userCode } = req.body.data;
     try {
+      if (!problemTitle || !userLanguage || !userCode) {
+        res.status(400).json({ error: '모든 필드를 입력해주세요.' });
+        return;
+      }
+      const sanitizedTitle = problemTitle.replace(/["\\]/g, '\\$&');
+      const sanitizedCode = userCode.replace(/["\\]/g, '\\$&');
       const response = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [
@@ -162,7 +190,7 @@ router.post(
           },
           {
             role: 'user',
-            content: `코드를 검증해주세요. 문제: "${problemTitle}", 언어: "${userLanguage}", 코드: "${userCode}". 올바른 경우 "true", 그렇지 않은 경우 "false"만 반환하세요.`,
+            content: `코드를 검증해주세요. 문제: "${sanitizedTitle}", 언어: "${userLanguage}", 코드: "${sanitizedCode}". 올바른 경우 "true", 그렇지 않은 경우 "false"만 반환하세요.`,
           },
         ],
         max_tokens: 5,

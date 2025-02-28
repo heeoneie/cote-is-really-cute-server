@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { rivalRepository, userRepository } from '../repository/repository';
+import { AppDataSource } from '../config/db';
 
 const router = Router();
 
@@ -111,10 +112,13 @@ router.post(
         res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
         return;
       }
-
-      const newRival = rivalRepository.create({ user, rivalId: rival.rivalId });
-      await rivalRepository.save(newRival);
-
+      await AppDataSource.transaction(async (transactionalEntityManager) => {
+        const newRival = rivalRepository.create({
+          user,
+          rivalId: rival.rivalId,
+        });
+        await transactionalEntityManager.save(newRival);
+      });
       res.status(200).json({ message: '라이벌 등록 성공!' });
     } catch (error) {
       console.error(error);
@@ -193,24 +197,29 @@ router.delete(
     try {
       const user = await userRepository.findOne({
         where: { email: userEmail },
+        relations: ['rivals'],
       });
       const rival = await userRepository.findOne({
         where: { nickName: rivalNickName },
+        relations: ['rivals'],
       });
 
       if (!user || !rival) {
         res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
         return;
       }
+      await AppDataSource.transaction(async (transactionalEntityManager) => {
+        user.rivals = user.rivals.filter((r) => r.rivalId !== rival.userId);
+        rival.rivals = rival.rivals.filter((r) => r.rivalId !== user.userId);
 
-      user.rivals = user.rivals.filter((r) => r.rivalId !== rival.userId);
-      rival.rivals = rival.rivals.filter((r) => r.rivalId !== user.userId);
+        await transactionalEntityManager.save(user);
+        await transactionalEntityManager.save(rival);
 
-      await userRepository.save(user);
-      await rivalRepository.save(rival);
-
-      await rivalRepository.delete({ user: user, rivalId: rival.userId });
-
+        await transactionalEntityManager.delete('Rival', {
+          user: user,
+          rivalId: rival.userId,
+        });
+      });
       res
         .status(200)
         .json({ message: '라이벌 삭제 성공!', userRivals: user.rivals });
