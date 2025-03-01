@@ -17,8 +17,6 @@ import rateLimit from 'express-rate-limit';
 const app = express();
 const server = http.createServer(app);
 
-connectDB();
-
 app.use(cors());
 app.use(helmet());
 app.use(express.json({ limit: '10mb' }));
@@ -34,6 +32,7 @@ setupSwagger(app);
 app.use('/', healthRoutes);
 app.use('/auth', authRoutes);
 app.use('/openai', openaiRoutes);
+// app.use('/battle', battleRoutes);
 app.use('/protected', protectedRoutes);
 app.use('/users', userRoutes);
 app.use('/rival', rivalRoutes);
@@ -47,6 +46,8 @@ if (!process.env.PORT)
 const port = process.env.PORT || '3000';
 const startServer = async () => {
   try {
+    await connectDB();
+    console.log('데이터베이스 연결 성공');
     server.listen(port, () => {
       console.log(`서버가 포트 ${port}에서 실행 중입니다`);
     });
