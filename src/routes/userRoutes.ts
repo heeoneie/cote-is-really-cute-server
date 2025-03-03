@@ -431,6 +431,7 @@ router.post(
  */
 router.get(
   '/attend/:userEmail',
+  authMiddleware,
   async (req: Request<{ userEmail: string }>, res: Response): Promise<void> => {
     const { userEmail } = req.params;
     try {
