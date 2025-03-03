@@ -2,6 +2,7 @@ import {
   BeforeInsert,
   Column,
   Entity,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -37,8 +38,8 @@ export class User {
   @Column({ name: 'experience', type: 'int', nullable: false })
   experience!: number;
 
-  @OneToMany(() => Level, (level: Level) => level.user)
-  level!: number;
+  @ManyToOne(() => Level, (level: Level) => level.users)
+  level!: Level;
   @OneToMany(() => Attendance, (attendance: Attendance) => attendance.user)
   attendances!: Attendance[];
   @OneToMany(() => Rival, (rival: Rival) => rival.user)

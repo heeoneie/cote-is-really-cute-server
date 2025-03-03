@@ -1,10 +1,4 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './User';
 
 @Entity('levels')
@@ -14,7 +8,6 @@ export class Level {
   @Column({ name: 'requiredExperience', type: 'int', nullable: false })
   requiredExperience!: number;
 
-  @ManyToOne(() => User, (user: User) => user.level)
-  @JoinColumn({ name: 'userId' })
-  user!: User;
+  @OneToMany(() => User, (user: User) => user.level)
+  users!: User[];
 }
