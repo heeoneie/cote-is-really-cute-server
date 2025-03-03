@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { fetchRandomProblem } from './openaiRoutes';
 import { User } from '../entity/User';
-import { userRepository } from '../repository/repository';
+import { levelRepository, userRepository } from '../repository/repository';
 
 interface Battle {
   players: string[];
@@ -141,8 +141,13 @@ export const setupSocket = (server: any): void => {
 
 async function checkLevelUp(user: User): Promise<void> {
   if (user.experience >= 100) {
-    user.level += 1;
-    user.experience = 0; // 경험치 초기화
+    const currentLevel = user.level.level;
+    const nextLevel = await levelRepository.findOne({
+      where: { level: currentLevel + 1 },
+    });
+    if (nextLevel) user.level = nextLevel;
+    else console.warn(`레벨 ${currentLevel + 1}이 존재하지 않습니다.`);
+    user.experience = 0;
     await userRepository.save(user);
   }
 }
