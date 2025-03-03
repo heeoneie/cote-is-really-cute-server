@@ -8,11 +8,6 @@ import { ILike, Not } from 'typeorm';
 
 const router = Router();
 
-interface SearchUserQuery {
-  type: 'nickName' | 'email';
-  value: string;
-  userEmail: string;
-}
 /**
  * @swagger
  * tags:
@@ -75,14 +70,17 @@ interface SearchUserQuery {
 
 router.get(
   '/search',
-  async (
-    req: Request<{}, {}, {}, SearchUserQuery>,
-    res: Response,
-  ): Promise<void> => {
-    const { type, value, userEmail } = req.query;
-
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    const { type, value } = req.query;
+    const userEmail = req.user?.email;
     if (!type || !value) {
       res.status(400).json({ message: '검색할 유형과 값을 입력해주세요.' });
+      return;
+    }
+
+    if (!userEmail) {
+      res.status(401).json({ message: '인증되지 않은 사용자입니다.' });
       return;
     }
 
@@ -327,12 +325,19 @@ router.put(
 
 router.post(
   '/attend',
+  authMiddleware,
   async (
     req: Request<{}, {}, { userEmail: string; attendanceDate: Date }>,
     res: Response,
   ): Promise<void> => {
     const { userEmail, attendanceDate } = req.body;
     try {
+      if (req.user?.email !== userEmail) {
+        res
+          .status(403)
+          .json({ message: '자신의 계정에 대해서만 출석 기록이 가능합니다.' });
+        return;
+      }
       const user = await userRepository.findOne({
         where: {
           email: userEmail,

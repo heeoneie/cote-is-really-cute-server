@@ -28,7 +28,7 @@ export class User {
   @Column({ name: 'nickName', type: 'varchar', nullable: false, unique: true })
   @Length(2, 30)
   nickName!: string;
-  @Column({ name: 'password', type: 'varchar', length: 30, nullable: false })
+  @Column({ name: 'password', type: 'varchar', length: 100, nullable: false })
   password!: string;
   @BeforeInsert()
   async hashPassword() {
