@@ -180,7 +180,11 @@ router.put(
         return;
       }
 
-      const userId = parseInt(req.user.userId, 10);
+      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : null;
+      if (!userId) {
+        res.status(401).json({ msg: '인증되지 않은 사용자입니다.' });
+        return;
+      }
       const user = await userRepository.findOne({
         where: { userId },
       });
@@ -258,7 +262,11 @@ router.put(
     }
 
     try {
-      const userId = parseInt(req.user.userId, 10);
+      const userId = req.user?.userId ? parseInt(req.user.userId, 10) : null;
+      if (!userId) {
+        res.status(401).json({ msg: '인증되지 않은 사용자입니다.' });
+        return;
+      }
       const user = await userRepository.findOne({ where: { userId } });
       if (!user) {
         res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
