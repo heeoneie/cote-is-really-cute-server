@@ -140,6 +140,28 @@ export const setupSocket = (server: any): void => {
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       waitingQueue = waitingQueue.filter((user) => user.socketId !== socket.id);
+      const ongoingBattleKey = Object.keys(battles).find((matchId) =>
+        battles[matchId].socketIds.includes(socket.id),
+      );
+
+      if (ongoingBattleKey) {
+        const battle = battles[ongoingBattleKey];
+        const opponentSocketId = battle.socketIds.find(
+          (id) => id !== socket.id,
+        );
+
+        if (opponentSocketId) {
+          io.to(opponentSocketId).emit('opponentDisconnected', {
+            message: 'Your opponent has disconnected.',
+          });
+        }
+
+        delete battles[ongoingBattleKey];
+        console.log(
+          `Battle ${ongoingBattleKey} has been removed due to disconnection.`,
+        );
+      }
+
       delete users[socket.id];
     });
   });
