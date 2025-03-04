@@ -2,6 +2,9 @@ import { Server, Socket } from 'socket.io';
 import { fetchRandomProblem } from './openaiRoutes';
 import { User } from '../entity/User';
 import { levelRepository, userRepository } from '../repository/repository';
+import { AppDataSource } from '../config/db';
+import { EntityManager } from 'typeorm';
+import { Level } from '../entity/Level';
 
 interface Battle {
   players: string[];
@@ -72,54 +75,57 @@ export const setupSocket = (server: any): void => {
         isCorrect: boolean;
       }) => {
         const { problemNumber, userEmail, isCorrect } = data;
-        if (isCorrect) {
-          const match = Object.values(battles).find(
-            (battle) =>
-              battle.players.includes(userEmail) &&
-              battle.problemNumber === problemNumber,
-          );
+        if (!isCorrect) return;
 
-          if (match) {
-            try {
-              const winner = await userRepository.findOne({
+        const match = Object.values(battles).find(
+          (battle) =>
+            battle.players.includes(userEmail) &&
+            battle.problemNumber === problemNumber,
+        );
+
+        if (!match) return;
+
+        try {
+          await AppDataSource.transaction(
+            async (transactionalEntityManager: EntityManager) => {
+              const winner = await transactionalEntityManager.findOne(User, {
                 where: { email: userEmail },
               });
               const loserEmail = match.players.find(
                 (player) => player !== userEmail,
               );
-              const loser = await userRepository.findOne({
-                where: { email: loserEmail },
-              });
+              const loser = loserEmail
+                ? await transactionalEntityManager.findOne(User, {
+                    where: { email: loserEmail },
+                  })
+                : null;
+
+              if (!winner)
+                throw new Error(`Winner user not found: ${userEmail}`);
+
+              const experienceAwarded = 10;
+              winner.experience += experienceAwarded;
+              await transactionalEntityManager.save(winner);
+              await checkLevelUp(winner, transactionalEntityManager);
+              const res = {
+                winner: winner.nickName,
+                loser: loser?.nickName,
+                problemId: problemNumber,
+                experience: experienceAwarded,
+              };
               const winnerSocketId = Object.keys(users).find(
                 (id) => users[id] === userEmail,
               );
               const loserSocketId = Object.keys(users).find(
                 (id) => users[id] === loserEmail,
               );
-
-              const experienceAwarded = 10;
-              if (winner) {
-                winner.experience += experienceAwarded;
-                await userRepository.save(winner);
-
-                await checkLevelUp(winner);
-
-                const res = {
-                  winner: winner.nickName,
-                  loser: loser?.nickName,
-                  problemId: problemNumber,
-                  experience: experienceAwarded,
-                };
-
-                if (winnerSocketId)
-                  io.to(winnerSocketId).emit('battleEnded', res);
-                if (loserSocketId)
-                  io.to(loserSocketId).emit('battleEnded', res);
-              }
-            } catch (error) {
-              console.error('Error finding user:', error);
-            }
-          }
+              if (winnerSocketId)
+                io.to(winnerSocketId).emit('battleEnded', res);
+              if (loserSocketId) io.to(loserSocketId).emit('battleEnded', res);
+            },
+          );
+        } catch (error) {
+          console.error('Error finding user:', error);
         }
       },
     );
@@ -139,15 +145,19 @@ export const setupSocket = (server: any): void => {
   });
 };
 
-async function checkLevelUp(user: User): Promise<void> {
+async function checkLevelUp(
+  user: User,
+  transactionalEntityManager: EntityManager,
+): Promise<void> {
   if (user.experience >= 100) {
     const currentLevel = user.level.level;
-    const nextLevel = await levelRepository.findOne({
+    const nextLevel = await transactionalEntityManager.findOne(Level, {
       where: { level: currentLevel + 1 },
     });
-    if (nextLevel) user.level = nextLevel;
-    else console.warn(`레벨 ${currentLevel + 1}이 존재하지 않습니다.`);
-    user.experience = 0;
-    await userRepository.save(user);
+    if (nextLevel) {
+      user.level = nextLevel;
+      user.experience = 0;
+      await transactionalEntityManager.save(user);
+    } else console.warn(`레벨 ${currentLevel + 1}이 존재하지 않습니다.`);
   }
 }
