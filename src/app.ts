@@ -32,7 +32,6 @@ setupSwagger(app);
 app.use('/', healthRoutes);
 app.use('/auth', authRoutes);
 app.use('/openai', openaiRoutes);
-// app.use('/battle', battleRoutes);
 app.use('/protected', protectedRoutes);
 app.use('/users', userRoutes);
 app.use('/rival', rivalRoutes);
