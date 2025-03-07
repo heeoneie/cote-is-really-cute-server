@@ -5,6 +5,7 @@ import { calculateConsecutiveAttendance } from '../utils/attendance';
 import { sendEmail } from '../utils/email';
 import { attendanceRepository, userRepository } from '../repository/repository';
 import { ILike, Not } from 'typeorm';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 
@@ -270,7 +271,9 @@ router.put(
         res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         return;
       }
-      user.password = newPassword;
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      user.password = hashedPassword;
       await userRepository.save(user);
 
       res
