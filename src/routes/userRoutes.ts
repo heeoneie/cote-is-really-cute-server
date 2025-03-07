@@ -72,7 +72,15 @@ const router = Router();
 router.get(
   '/search',
   authMiddleware,
-  async (req: Request, res: Response): Promise<void> => {
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { type: string; value: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
     const { type, value } = req.query;
     const userEmail = req.user?.email;
     if (!type || !value) {
@@ -167,7 +175,11 @@ router.put(
   '/update-nickName',
   authMiddleware,
   async (
-    req: Request<{}, {}, { newNickName: string }>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      { newNickName: string }
+    >,
     res: Response,
   ): Promise<void> => {
     const { newNickName } = req.body;
@@ -175,13 +187,13 @@ router.put(
     try {
       const isNickNameDuplicate = await checkNickNameDuplicate(newNickName);
       if (isNickNameDuplicate) {
-        res.status(400).json({ msg: '이미 사용 중인 닉네임입니다.' });
+        res.status(400).json({ message: '이미 사용 중인 닉네임입니다.' });
         return;
       }
 
       const userId = req.user?.userId ? parseInt(req.user.userId, 10) : null;
       if (!userId) {
-        res.status(401).json({ msg: '인증되지 않은 사용자입니다.' });
+        res.status(401).json({ message: '인증되지 않은 사용자입니다.' });
         return;
       }
       const user = await userRepository.findOne({
@@ -189,7 +201,7 @@ router.put(
       });
 
       if (!user) {
-        res.status(404).json({ msg: '사용자를 찾을 수 없습니다.' });
+        res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         return;
       }
 
@@ -248,7 +260,11 @@ router.put(
   '/update-password',
   authMiddleware,
   async (
-    req: Request<{}, {}, { newPassword: string; confirmPassword: string }>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      { newPassword: string; confirmPassword: string }
+    >,
     res: Response,
   ): Promise<void> => {
     const { newPassword, confirmPassword } = req.body;
@@ -263,7 +279,7 @@ router.put(
     try {
       const userId = req.user?.userId ? parseInt(req.user.userId, 10) : null;
       if (!userId) {
-        res.status(401).json({ msg: '인증되지 않은 사용자입니다.' });
+        res.status(401).json({ message: '인증되지 않은 사용자입니다.' });
         return;
       }
       const user = await userRepository.findOne({ where: { userId } });
@@ -330,7 +346,11 @@ router.post(
   '/attend',
   authMiddleware,
   async (
-    req: Request<{}, {}, { userEmail: string; attendanceDate: Date }>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      { userEmail: string; attendanceDate: Date }
+    >,
     res: Response,
   ): Promise<void> => {
     const { userEmail, attendanceDate } = req.body;

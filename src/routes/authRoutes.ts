@@ -6,6 +6,12 @@ import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 
 const router = Router();
+
+interface signUpRequest {
+  nickName: string;
+  email: string;
+  password: string;
+}
 /**
  * @swagger
  * tags:
@@ -65,24 +71,32 @@ const router = Router();
  *                   type: string
  *                   example: "서버 에러"
  */
-router.post('/signup', async (req: Request, res: Response): Promise<void> => {
-  const { nickName, email, password } = req.body;
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+router.post(
+  '/signup',
+  async (
+    req: Request<Record<string, never>, Record<string, never>, signUpRequest>,
+    res: Response,
+  ): Promise<void> => {
+    const { nickName, email, password } = req.body;
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = userRepository.create({
-      nickName,
-      email,
-      password: hashedPassword,
-    });
+      const newUser = userRepository.create({
+        nickName,
+        email,
+        password: hashedPassword,
+      });
 
-    await userRepository.save(newUser);
-    res.status(201).json({ message: '성공적으로 회원가입이 완료되었습니다!' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: '서버 에러' });
-  }
-});
+      await userRepository.save(newUser);
+      res
+        .status(201)
+        .json({ message: '성공적으로 회원가입이 완료되었습니다!' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: '서버 에러' });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -146,7 +160,14 @@ const loginLimiter = rateLimit({
 router.post(
   '/login',
   loginLimiter,
-  async (req: Request, res: Response): Promise<void> => {
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      { email: string; password: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
     const { email, password } = req.body;
 
     try {
@@ -212,21 +233,32 @@ router.post(
  *       500:
  *         description: 서버 오류
  */
-router.get('/check', async (req: Request, res: Response): Promise<void> => {
-  const { nickName } = req.query;
+router.get(
+  '/check',
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { nickName: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { nickName } = req.query;
 
-  if (!nickName || typeof nickName !== 'string') {
-    res.status(400).json({ message: '닉네임을 입력해주세요.' });
-    return;
-  }
+    if (!nickName || typeof nickName !== 'string') {
+      res.status(400).json({ message: '닉네임을 입력해주세요.' });
+      return;
+    }
 
-  try {
-    const isDuplicate = await checkNickNameDuplicate(nickName);
-    res.json({ available: !isDuplicate });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: '서버 에러' });
-  }
-});
+    try {
+      const isDuplicate = await checkNickNameDuplicate(nickName);
+      res.json({ available: !isDuplicate });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: '서버 에러' });
+    }
+  },
+);
 
 export default router;

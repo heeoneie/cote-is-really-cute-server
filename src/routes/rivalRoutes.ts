@@ -84,7 +84,11 @@ const router = Router();
 router.post(
   '/register',
   async (
-    req: Request<{}, {}, { userEmail: string; rivalNickName: string }>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      { userEmail: string; rivalNickName: string }
+    >,
     res: Response,
   ): Promise<void> => {
     const { userEmail, rivalNickName } = req.body;
@@ -192,7 +196,12 @@ router.post(
 router.delete(
   '/remove',
   async (
-    req: Request<{}, {}, {}, { userEmail: string; rivalNickName: string }>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { userEmail: string; rivalNickName: string }
+    >,
     res: Response,
   ): Promise<void> => {
     const { userEmail, rivalNickName } = req.query;
@@ -281,7 +290,12 @@ router.delete(
 router.get(
   '/get-info',
   async (
-    req: Request<{}, {}, {}, { userEmail: string }>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { userEmail: string }
+    >,
     res: Response,
   ): Promise<void> => {
     const { userEmail } = req.query;

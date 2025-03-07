@@ -74,7 +74,11 @@ const openai = new OpenAI({
 router.post(
   '/recommendation',
   async (
-    req: Request<{}, {}, ProblemRecommendationRequest>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      ProblemRecommendationRequest
+    >,
     res: Response,
   ): Promise<void> => {
     const { category } = req.body;
@@ -170,7 +174,11 @@ router.post(
 router.post(
   '/grade',
   async (
-    req: Request<{}, {}, CodeGradingRequest>,
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      CodeGradingRequest
+    >,
     res: Response,
   ): Promise<void> => {
     const { problemTitle, userLanguage, userCode } = req.body.data;
