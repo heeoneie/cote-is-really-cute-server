@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { User } from './User';
 import { IsEmail, Length } from 'class-validator';
+import { Level } from './Level';
 
 @Entity('rivals')
 export class Rival {
@@ -28,4 +29,7 @@ export class Rival {
   @ManyToOne(() => User, (user: User) => user.rivals)
   @JoinColumn({ name: 'userId' })
   user!: User;
+
+  @ManyToOne(() => Level, (level: Level) => level.rivals)
+  level!: Level;
 }

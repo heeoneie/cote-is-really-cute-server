@@ -291,31 +291,23 @@ router.get(
       return;
     }
     try {
-      const user = await userRepository.findOne({
-        where: { email: userEmail },
-        relations: ['level', 'rivals'],
-      });
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.level', 'level')
+        .leftJoinAndSelect('user.rivals', 'rivals')
+        .leftJoinAndSelect('rivals.level', 'rivalLevel')
+        .where('user.email = :email', { email: userEmail })
+        .getOne();
 
       if (!user) {
         res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
         return;
       }
 
-      const rivalPromises = user.rivals.map(async (rival) => {
-        const rivalUser = await userRepository.findOne({
-          where: { userId: rival.rivalId },
-          relations: ['level'],
-        });
-
-        if (!rivalUser || !rivalUser.level) return null;
-
-        return {
-          nickName: rivalUser.nickName,
-          level: rivalUser.level,
-        };
-      });
-
-      const rivals = (await Promise.all(rivalPromises)).filter(Boolean);
+      const rivals = user.rivals.map((rival) => ({
+        nickName: rival.nickName,
+        level: rival.level ? rival.level.level : null,
+      }));
 
       res.status(200).json({
         userLevel: user.level || null,
