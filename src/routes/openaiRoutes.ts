@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import OpenAI from 'openai';
+import NodeCache from 'node-cache';
 
 type ProblemRecommendationRequest = {
   category: string;
@@ -215,7 +216,14 @@ router.post(
   },
 );
 
+const problemCache = new NodeCache({ stdTTL: 3600 });
 export const fetchRandomProblem = async (): Promise<RandomProblem> => {
+  const CACHE_KEY = 'random_problems';
+  const cachedProblems = problemCache.get<RandomProblem[]>(CACHE_KEY) || [];
+  if (cachedProblems) {
+    const randomIndex = Math.floor(Math.random() * cachedProblems.length);
+    return cachedProblems[randomIndex];
+  }
   try {
     const problem = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
@@ -230,15 +238,21 @@ export const fetchRandomProblem = async (): Promise<RandomProblem> => {
     });
 
     const problemData = problem.choices?.[0]?.message.content;
-
-    if (!problemData || !problemData.trim())
-      throw new Error('OpenAI 응답이 비어 있습니다.');
+    if (!problemData) throw new Error('OpenAI API 응답이 비어있습니다.');
 
     const parts = problemData.split(/\s+/);
+    if (parts.length < 2) throw new Error('응답 형식이 올바르지 않습니다.');
+
     const problemNumber = parseInt(parts[0], 10);
     const problemTitle = parts.slice(1).join(' ');
 
-    return { problemNumber, problemTitle };
+    const result = { problemNumber, problemTitle };
+
+    const existingProblems = (problemCache.get<RandomProblem[]>(CACHE_KEY) ||
+      []) as RandomProblem[];
+    problemCache.set(CACHE_KEY, [...existingProblems, result]);
+
+    return result;
   } catch (error) {
     console.error('문제 가져오기 중 오류 발생:', error);
     throw error;

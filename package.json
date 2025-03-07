@@ -19,6 +19,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "~1.9.1",
     "mysql2": "^3.12.0",
+    "node-cache": "^5.1.2",
     "nodemailer": "^6.9.15",
     "openai": "^4.53.0",
     "pug": "2.0.0-beta11",
