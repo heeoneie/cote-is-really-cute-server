@@ -220,7 +220,7 @@ const problemCache = new NodeCache({ stdTTL: 3600 });
 export const fetchRandomProblem = async (): Promise<RandomProblem> => {
   const CACHE_KEY = 'random_problems';
   const cachedProblems = problemCache.get<RandomProblem[]>(CACHE_KEY) || [];
-  if (cachedProblems) {
+  if (cachedProblems.length > 0) {
     const randomIndex = Math.floor(Math.random() * cachedProblems.length);
     return cachedProblems[randomIndex];
   }
