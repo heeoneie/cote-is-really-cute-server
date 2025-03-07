@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { checkNickNameDuplicate } from '../utils/validation';
 import { userRepository } from '../repository/repository';
 import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 /**
@@ -138,40 +139,48 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
  *                   type: string
  *                   example: "서버 에러"
  */
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body;
-
-  try {
-    const user = await userRepository.findOne({ where: { email } });
-    if (!user) {
-      res.status(400).json({ msg: '이메일을 다시 입력해주세요.' });
-      return;
-    }
-
-    const storedPassword = user.password;
-    const isMatch = await bcrypt.compare(password, storedPassword);
-
-    if (!isMatch) {
-      res.status(400).json({ msg: '비밀번호를 다시 입력해주세요.' });
-      return;
-    }
-    const payload = {
-      id: user.userId,
-      email: user.email,
-    };
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
-      expiresIn: '1h',
-    });
-
-    res.json({ token });
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      console.error(err.message);
-      res.status(500).send('서버 에러');
-    }
-  }
+const loginLimiter = rateLimit({
+  windowMs: 3 * 60 * 1000,
+  max: 5,
 });
+router.post(
+  '/login',
+  loginLimiter,
+  async (req: Request, res: Response): Promise<void> => {
+    const { email, password } = req.body;
+
+    try {
+      const user = await userRepository.findOne({ where: { email } });
+      if (!user) {
+        res.status(400).json({ msg: '이메일을 다시 입력해주세요.' });
+        return;
+      }
+
+      const storedPassword = user.password;
+      const isMatch = await bcrypt.compare(password, storedPassword);
+
+      if (!isMatch) {
+        res.status(400).json({ msg: '비밀번호를 다시 입력해주세요.' });
+        return;
+      }
+      const payload = {
+        id: user.userId,
+        email: user.email,
+      };
+
+      const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
+        expiresIn: '1h',
+      });
+
+      res.json({ token });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error(err.message);
+        res.status(500).send('서버 에러');
+      }
+    }
+  },
+);
 
 /**
  * @swagger
