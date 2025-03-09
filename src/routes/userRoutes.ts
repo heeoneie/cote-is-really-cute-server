@@ -106,8 +106,8 @@ router.get(
 
       const searchCondition =
         type === 'nickName'
-          ? { nickName: ILike(`%${value}%`), id: Not(currentUser.userId) }
-          : { email: ILike(`%${value}%`), id: Not(currentUser.userId) };
+          ? { nickName: ILike(`%${value}%`), userId: Not(currentUser.userId) }
+          : { email: ILike(`%${value}%`), userId: Not(currentUser.userId) };
 
       const users = await userRepository.find({
         where: searchCondition,
@@ -130,7 +130,10 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      res.status(500).json({ message: '서버 오류', error });
+      console.error('검색 오류:', error);
+      res.status(500).json({
+        message: '서버 오류가 발생했습니다. 나중에 다시 시도해주세요.',
+      });
     }
   },
 );
@@ -462,6 +465,13 @@ router.get(
   authMiddleware,
   async (req: Request<{ userEmail: string }>, res: Response): Promise<void> => {
     const { userEmail } = req.params;
+    if (req.user?.email !== userEmail) {
+      res
+        .status(403)
+        .json({ message: '자신의 계정에 대한 정보만 조회할 수 있습니다.' });
+      return;
+    }
+
     try {
       const user = await userRepository.findOne({
         where: {

@@ -191,6 +191,10 @@ router.post(
 
       const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
         expiresIn: '1h',
+        issuer: 'cote-is-really-cute-server',
+        audience: 'cote-is-really-cute',
+        subject: user.userId.toString(),
+        notBefore: 0,
       });
 
       res.json({ token });
