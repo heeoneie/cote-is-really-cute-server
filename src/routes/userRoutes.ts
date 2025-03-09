@@ -4,7 +4,7 @@ import { checkNickNameDuplicate } from '../utils/validation';
 import { calculateConsecutiveAttendance } from '../utils/attendance';
 import { sendEmail } from '../utils/email';
 import { attendanceRepository, userRepository } from '../repository/repository';
-import { ILike, Not } from 'typeorm';
+import { ILike, In, Not } from 'typeorm';
 import bcrypt from 'bcryptjs';
 
 const router = Router();
@@ -391,33 +391,33 @@ router.post(
 
       if (rivals.length === 0) console.log('라이벌이 없습니다.');
       else {
-        for (const rival of rivals) {
-          const rivalUser = await userRepository.findOne({
-            where: { userId: rival.rivalId },
-            relations: ['attendances'],
-          });
-
-          if (!rivalUser) {
-            console.log(`${rival.rivalId}에 해당하는 유저를 찾을 수 없습니다.`);
-            continue;
-          }
-
-          const rivalHasAttended = rivalUser.attendances.some(
-            (attendance) =>
-              attendance.attendanceDates.toISOString().split('T')[0] === today,
-          );
-
-          if (!rivalHasAttended) {
-            await sendEmail(
-              rivalUser.email,
-              '오늘 문제 풀기 알림',
-              `
-                안녕하세요 ${rivalUser.nickName}님,
-                ${user.nickName}님이 오늘 문제를 풀었습니다. 당신도 오늘 문제를 풀어보세요!
-            `,
+        const rivalIds = rivals.map((rival) => rival.rivalId);
+        const rivalUsers = await userRepository.find({
+          where: { userId: In(rivalIds) },
+          relations: ['attendances'],
+        });
+        await Promise.all(
+          rivalUsers.map(async (rivalUser) => {
+            const rivalHasAttended = rivalUser.attendances.some(
+              (attendance) =>
+                attendance.attendanceDates.toISOString().split('T')[0] ===
+                today,
             );
-          }
-        }
+
+            if (!rivalHasAttended) {
+              return sendEmail(
+                rivalUser.email,
+                '오늘 문제 풀기 알림',
+                `
+             안녕하세요 ${rivalUser.nickName}님,
+             ${user.nickName}님이 오늘 문제를 풀었습니다. 당신도 오늘 문제를 풀어보세요!
+           `,
+              );
+            }
+
+            return Promise.resolve();
+          }),
+        );
       }
 
       res.status(200).json({ message: '출석 성공!' });
