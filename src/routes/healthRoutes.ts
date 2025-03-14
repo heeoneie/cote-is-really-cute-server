@@ -1,5 +1,5 @@
-const express = require('express');
-const router = express.Router();
+import { Router } from 'express';
+const router = Router();
 
 /**
  * @swagger
@@ -28,7 +28,7 @@ const router = express.Router();
  *                   example: ok
  */
 router.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
+  res.status(200).json({ status: 'ok' });
 });
 
-module.exports = router;
+export default router;

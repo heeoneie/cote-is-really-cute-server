@@ -1,10 +1,17 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-const { checkNickNameDuplicate } = require("../utils/validation");
-const Level = require("../models/Level");
+import { Router, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { checkNickNameDuplicate } from '../utils/validation';
+import { userRepository } from '../repository/repository';
+import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 
+const router = Router();
+
+interface signUpRequest {
+  nickName: string;
+  email: string;
+  password: string;
+}
 /**
  * @swagger
  * tags:
@@ -64,29 +71,32 @@ const Level = require("../models/Level");
  *                   type: string
  *                   example: "서버 에러"
  */
-router.post('/signup', async (req, res) => {
-    const { nickName, email, password, baekjoonTier } = req.body;
+router.post(
+  '/signup',
+  async (
+    req: Request<Record<string, never>, Record<string, never>, signUpRequest>,
+    res: Response,
+  ): Promise<void> => {
+    const { nickName, email, password } = req.body;
     try {
-        const level1 = await Level.findOne({ level: 1 });
-        if (!level1) return res.status(500).json({ message: '1레벨 정보가 없습니다.' });
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newUser = new User({
-            nickName,
-            email,
-            password,
-            baekjoonTier,
-            experience: 0,
-            levelId: level1._id,
-        });
+      const newUser = userRepository.create({
+        nickName,
+        email,
+        password: hashedPassword,
+      });
 
-        await newUser.save();
-
-        res.status(201).json({ message: '성공적으로 회원가입이 완료되었습니다!' });
+      await userRepository.save(newUser);
+      res
+        .status(201)
+        .json({ message: '성공적으로 회원가입이 완료되었습니다!' });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: '서버 에러' });
+      console.error(err);
+      res.status(500).json({ message: '서버 에러' });
     }
-});
+  },
+);
 
 /**
  * @swagger
@@ -143,29 +153,59 @@ router.post('/signup', async (req, res) => {
  *                   type: string
  *                   example: "서버 에러"
  */
-router.post('/login', async (req, res) => {
+const loginLimiter = rateLimit({
+  windowMs: 3 * 60 * 1000,
+  max: 5,
+});
+router.post(
+  '/login',
+  loginLimiter,
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      { email: string; password: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
     const { email, password } = req.body;
 
     try {
-        const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ msg: '이메일을 다시 입력해주세요.' });
+      const user = await userRepository.findOne({ where: { email } });
+      if (!user) {
+        res.status(400).json({ msg: '이메일을 다시 입력해주세요.' });
+        return;
+      }
 
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) return res.status(400).json({ msg: '비밀번호를 다시 입력해주세요.' });
+      const storedPassword = user.password;
+      const isMatch = await bcrypt.compare(password, storedPassword);
 
-        const payload = {
-            id: user.id,
-            email: user.email
-        };
+      if (!isMatch) {
+        res.status(400).json({ msg: '비밀번호를 다시 입력해주세요.' });
+        return;
+      }
+      const payload = {
+        id: user.userId,
+        email: user.email,
+      };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
+        expiresIn: '1h',
+        issuer: 'cote-is-really-cute-server',
+        audience: 'cote-is-really-cute',
+        subject: user.userId.toString(),
+        notBefore: 0,
+      });
 
-        res.json({ token });
-    } catch (err) {
+      res.json({ token });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
         console.error(err.message);
         res.status(500).send('서버 에러');
+      }
     }
-});
+  },
+);
 
 /**
  * @swagger
@@ -197,18 +237,32 @@ router.post('/login', async (req, res) => {
  *       500:
  *         description: 서버 오류
  */
-router.get('/check', async (req, res) => {
+router.get(
+  '/check',
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { nickName: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
     const { nickName } = req.query;
 
-    if (!nickName) return res.status(400).json({ message: '닉네임을 입력해주세요.' });
+    if (!nickName || typeof nickName !== 'string') {
+      res.status(400).json({ message: '닉네임을 입력해주세요.' });
+      return;
+    }
 
     try {
-        const isDuplicate = await checkNickNameDuplicate(nickName);
-        res.json({ available: !isDuplicate });
+      const isDuplicate = await checkNickNameDuplicate(nickName);
+      res.json({ available: !isDuplicate });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: '서버 에러' });
+      console.error(err);
+      res.status(500).json({ message: '서버 에러' });
     }
-});
+  },
+);
 
-module.exports = router;
+export default router;

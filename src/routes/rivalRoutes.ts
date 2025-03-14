@@ -1,7 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-const Rival = require('../models/Rival');
+import { Router, Request, Response } from 'express';
+import { rivalRepository, userRepository } from '../repository/repository';
+import { AppDataSource } from '../config/db';
+import { EntityManager } from 'typeorm';
+
+const router = Router();
 
 /**
  * @swagger
@@ -79,33 +81,58 @@ const Rival = require('../models/Rival');
  *                   type: string
  *                   example: '서버 에러'
  */
-router.post('/register', async (req, res) => {
+router.post(
+  '/register',
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      { userEmail: string; rivalNickName: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
     const { userEmail, rivalNickName } = req.body;
 
     try {
-        const user = await User.findOne({ email: userEmail });
-        const rival = await User.findOne({ nickName: rivalNickName });
+      const user = await userRepository.findOne({
+        where: {
+          email: userEmail,
+        },
+        relations: ['rivals'],
+      });
+      const rival = await rivalRepository.findOne({
+        where: { nickName: rivalNickName },
+      });
 
-        if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+      if (!user || !rival) {
+        res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+        return;
+      }
 
-        const userAlreadyHasRival = user.rivals.includes(rival._id);
-        if (userAlreadyHasRival) return res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
+      const userAlreadyHasRival = user.rivals.some(
+        (r) => r.rivalId === rival.rivalId,
+      );
 
-        user.rivals.push(rival._id);
-        rival.rivals.push(user._id);
-
-        await user.save();
-        await rival.save();
-
-        const newRival = new Rival({ userId: user._id, rivalId: rival._id });
-        await newRival.save();
-
-        res.status(200).json({ message: '라이벌 등록 성공!' });
+      if (userAlreadyHasRival) {
+        res.status(400).json({ message: '이미 등록된 라이벌입니다.' });
+        return;
+      }
+      await AppDataSource.transaction(
+        async (transactionalEntityManager: EntityManager) => {
+          const newRival = rivalRepository.create({
+            user,
+            rivalId: rival.rivalId,
+          });
+          await transactionalEntityManager.save(newRival);
+        },
+      );
+      res.status(200).json({ message: '라이벌 등록 성공!' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: '서버 에러' });
+      console.error(error);
+      res.status(500).json({ message: '서버 에러' });
     }
-});
+  },
+);
 
 /**
  * @swagger
@@ -166,31 +193,56 @@ router.post('/register', async (req, res) => {
  *                   type: string
  *                   example: '서버 에러'
  */
-router.delete('/remove', async (req, res) => {
+router.delete(
+  '/remove',
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { userEmail: string; rivalNickName: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
     const { userEmail, rivalNickName } = req.query;
 
     try {
-        const user = await User.findOne({ email: userEmail });
-        const rival = await User.findOne({ nickName: rivalNickName });
+      const user = await userRepository.findOne({
+        where: { email: userEmail },
+        relations: ['rivals'],
+      });
+      const rival = await userRepository.findOne({
+        where: { nickName: rivalNickName },
+        relations: ['rivals'],
+      });
 
-        if (!user || !rival) return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+      if (!user || !rival) {
+        res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+        return;
+      }
+      await AppDataSource.transaction(
+        async (transactionalEntityManager: EntityManager) => {
+          user.rivals = user.rivals.filter((r) => r.rivalId !== rival.userId);
+          rival.rivals = rival.rivals.filter((r) => r.rivalId !== user.userId);
 
-        const userRivalIndex = user.rivals.indexOf(rival._id);
-        const rivalUserIndex = rival.rivals.indexOf(user._id);
+          await transactionalEntityManager.save(user);
+          await transactionalEntityManager.save(rival);
 
-        if (userRivalIndex > -1) user.rivals.splice(userRivalIndex, 1);
-        if (rivalUserIndex > -1) rival.rivals.splice(rivalUserIndex, 1);
-
-        await user.save();
-        await rival.save();
-        await Rival.deleteOne({ userId: user._id, rivalId: rival._id });
-
-        res.status(200).json({ message: '라이벌 삭제 성공!', userRivals: user.rivals });
+          await transactionalEntityManager.delete('Rival', {
+            user: user,
+            rivalId: rival.userId,
+          });
+        },
+      );
+      res
+        .status(200)
+        .json({ message: '라이벌 삭제 성공!', userRivals: user.rivals });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: '서버 에러' });
+      console.error(error);
+      res.status(500).json({ message: '서버 에러' });
     }
-});
+  },
+);
 
 /**
  * @swagger
@@ -235,32 +287,50 @@ router.delete('/remove', async (req, res) => {
  *       500:
  *         description: 서버 오류
  */
-router.get('/get-info', async (req, res) => {
+router.get(
+  '/get-info',
+  async (
+    req: Request<
+      Record<string, never>,
+      Record<string, never>,
+      Record<string, never>,
+      { userEmail: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
     const { userEmail } = req.query;
 
-    if (!userEmail) return res.status(400).json({ message: '이메일을 입력해주세요.' });
-
-    try {
-        const user = await User.findOne({ email: userEmail }).populate('levelId', 'level');
-        if (!user) return res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
-
-        const rivalPromises = user.rivals.map(async (rivalId) => {
-            const rivalUser = await User.findById(rivalId).populate('levelId', 'level');
-            return {
-                nickName: rivalUser.nickName,
-                level: rivalUser.levelId.level,
-            };
-        });
-
-        const rivals = await Promise.all(rivalPromises);
-
-        res.status(200).json({
-            userLevel: user.levelId.level,
-            rivals,
-        });
-    } catch (error) {
-        res.status(500).json({ message: '서버 오류', error });
+    if (!userEmail) {
+      res.status(400).json({ message: '이메일을 입력해주세요.' });
+      return;
     }
-});
+    try {
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.level', 'level')
+        .leftJoinAndSelect('user.rivals', 'rivals')
+        .leftJoinAndSelect('rivals.level', 'rivalLevel')
+        .where('user.email = :email', { email: userEmail })
+        .getOne();
 
-module.exports = router;
+      if (!user) {
+        res.status(404).json({ message: '해당 유저를 찾을 수 없습니다.' });
+        return;
+      }
+
+      const rivals = user.rivals.map((rival) => ({
+        nickName: rival.nickName,
+        level: rival.level ? rival.level.level : null,
+      }));
+
+      res.status(200).json({
+        userLevel: user.level || null,
+        rivals,
+      });
+    } catch (error) {
+      res.status(500).json({ message: '서버 오류', error });
+    }
+  },
+);
+
+export default router;
