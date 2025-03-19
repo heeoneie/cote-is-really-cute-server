@@ -45,10 +45,6 @@ interface signUpRequest {
  *                 type: string
  *                 description: 사용자의 비밀번호
  *                 example: 'yourPassword123!'
- *               baekjoonTier:
- *                 type: number
- *                 description: 백준 티어 (선택 사항)
- *                 example: 10
  *     responses:
  *       201:
  *         description: 성공적으로 회원가입이 완료되었습니다!
