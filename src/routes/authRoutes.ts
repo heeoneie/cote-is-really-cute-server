@@ -75,18 +75,17 @@ router.post(
   ): Promise<void> => {
     const { nickName, email, password } = req.body;
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-
       const newUser = userRepository.create({
         nickName,
         email,
-        password: hashedPassword,
+        password,
       });
 
       await userRepository.save(newUser);
       res
         .status(201)
         .json({ message: '성공적으로 회원가입이 완료되었습니다!' });
+      console.log(newUser);
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: '서버 에러' });
@@ -165,9 +164,9 @@ router.post(
     res: Response,
   ): Promise<void> => {
     const { email, password } = req.body;
-
     try {
       const user = await userRepository.findOne({ where: { email } });
+      console.log('조회된 유저:', user);
       if (!user) {
         res.status(400).json({ msg: '이메일을 다시 입력해주세요.' });
         return;
@@ -253,7 +252,12 @@ router.get(
 
     try {
       const isDuplicate = await checkNickNameDuplicate(nickName);
-      res.json({ available: !isDuplicate });
+      res.json({
+        available: !isDuplicate,
+        message: isDuplicate
+          ? '이미 사용 중인 닉네임입니다.'
+          : '사용 가능한 닉네임입니다.',
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: '서버 에러' });
