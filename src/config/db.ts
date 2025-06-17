@@ -12,7 +12,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   entities: [User, Rival, Level, Attendance],
-  synchronize: false,
+  synchronize: true,
   logging: true,
 });
 

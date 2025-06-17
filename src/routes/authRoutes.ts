@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { checkNickNameDuplicate } from '../utils/validation';
-import { userRepository } from '../repository/repository';
+import { levelRepository, userRepository } from '../repository/repository';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 
@@ -74,11 +74,18 @@ router.post(
     res: Response,
   ): Promise<void> => {
     const { nickName, email, password } = req.body;
+    const defaultLevel = await levelRepository.findOne({ where: { level: 1 } });
+    if (!defaultLevel) {
+      res.status(500).json({ message: '기본 레벨 정보가 존재하지 않습니다.' });
+      return;
+    }
     try {
       const newUser = userRepository.create({
         nickName,
         email,
         password,
+        experience: 0,
+        level: defaultLevel,
       });
 
       await userRepository.save(newUser);
@@ -192,7 +199,7 @@ router.post(
         notBefore: 0,
       });
 
-      res.json({ token });
+      res.json({ data: { token }, message: '로그인 성공', status: 200 });
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error(err.message);

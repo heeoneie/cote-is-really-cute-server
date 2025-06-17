@@ -3,6 +3,7 @@ import {
   BeforeUpdate,
   Column,
   Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -45,9 +46,12 @@ export class User {
   experience!: number;
 
   @ManyToOne(() => Level, (level: Level) => level.users)
+  @JoinColumn({ name: 'level' })
   level!: Level;
   @OneToMany(() => Attendance, (attendance: Attendance) => attendance.user)
+  @JoinColumn({ name: 'attendance' })
   attendances!: Attendance[];
   @OneToMany(() => Rival, (rival: Rival) => rival.user)
+  @JoinColumn({ name: 'rival' })
   rivals!: Rival[];
 }

@@ -496,4 +496,67 @@ router.get(
   },
 );
 
+/**
+ * @swagger
+ * /users/level/{userEmail}:
+ *   get:
+ *     summary: 사용자 레벨 조회
+ *     description: 사용자의 현재 레벨을 반환합니다.
+ *     tags: [User]
+ *     parameters:
+ *       - name: userEmail
+ *         in: path
+ *         required: true
+ *         description: 사용자 이메일
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 사용자 레벨 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 level:
+ *                   type: integer
+ *       404:
+ *         description: 사용자를 찾을 수 없습니다.
+ *       500:
+ *         description: 서버 오류
+ */
+router.get(
+  '/level/:userEmail',
+  authMiddleware,
+  async (req: Request<{ userEmail: string }>, res: Response): Promise<void> => {
+    const { userEmail } = req.params;
+    console.log(userEmail);
+    if (req.user?.email !== userEmail) {
+      res
+        .status(403)
+        .json({ message: '자신의 계정 정보만 조회할 수 있습니다.' });
+      return;
+    }
+
+    try {
+      const user = await userRepository.findOne({
+        where: { email: userEmail },
+        relations: ['level'],
+      });
+
+      if (!user || !user.level) {
+        res
+          .status(404)
+          .json({ message: '사용자 또는 레벨 정보를 찾을 수 없습니다.' });
+        return;
+      }
+
+      res.status(200).json({ level: user.level.level });
+    } catch (error) {
+      console.error('레벨 조회 실패:', error);
+      res.status(500).json({ message: '서버 오류' });
+    }
+  },
+);
+
 export default router;

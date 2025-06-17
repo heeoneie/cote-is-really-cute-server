@@ -7,11 +7,9 @@ type ProblemRecommendationRequest = {
 };
 
 type CodeGradingRequest = {
-  data: {
-    problemTitle: string;
-    userLanguage: string;
-    userCode: string;
-  };
+  problemTitle: string;
+  userLanguage: string;
+  userCode: string;
 };
 
 type RandomProblem = {
@@ -110,7 +108,8 @@ router.post(
       });
       if (!response.choices?.[0]?.message?.content)
         throw new Error('OpenAI API 응답이 예상된 형식이 아닙니다.');
-      res.send(response.choices[0].message.content);
+      console.log(response.choices[0].message.content);
+      res.send({ problems: response.choices[0].message.content });
     } catch (error) {
       console.error(error);
       if (error instanceof OpenAI.APIError)
@@ -181,7 +180,9 @@ router.post(
     >,
     res: Response,
   ): Promise<void> => {
-    const { problemTitle, userLanguage, userCode } = req.body.data;
+    const { problemTitle, userLanguage, userCode } = req.body;
+    console.log(problemTitle, userLanguage, userCode);
+
     try {
       if (!problemTitle || !userLanguage || !userCode) {
         res.status(400).json({ error: '모든 필드를 입력해주세요.' });

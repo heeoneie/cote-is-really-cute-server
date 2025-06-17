@@ -1,7 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { fetchRandomProblem } from './openaiRoutes';
 import { User } from '../entity/User';
-import { levelRepository, userRepository } from '../repository/repository';
 import { AppDataSource } from '../config/db';
 import { EntityManager } from 'typeorm';
 import { Level } from '../entity/Level';
