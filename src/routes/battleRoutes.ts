@@ -10,6 +10,7 @@ interface Battle {
   socketIds: string[];
   problemNumber: number;
   isMatched: boolean;
+  isFinished: boolean;
   startTime: number;
 }
 
@@ -56,6 +57,7 @@ export const setupSocket = (server: any): void => {
           socketIds: [socket.id, opponent.socketId],
           problemNumber: problem.problemNumber,
           isMatched: true,
+          isFinished: false,
           startTime: Date.now(),
         };
 
@@ -76,19 +78,24 @@ export const setupSocket = (server: any): void => {
         const { problemNumber, userEmail, isCorrect } = data;
         if (!isCorrect) return;
 
-        const match = Object.values(battles).find(
-          (battle) =>
-            battle.players.includes(userEmail) &&
-            battle.problemNumber === problemNumber,
+        const matchId = Object.keys(battles).find(
+          (id) =>
+            battles[id].players.includes(userEmail) &&
+            battles[id].problemNumber === problemNumber,
         );
 
-        if (!match) return;
+        if (!matchId) return;
+        const match = battles[matchId];
+        // 먼저 맞힌 한 명만 승자로 처리하고, 늦게 온 제출이 경험치를 또 받지 않게 막는다.
+        if (match.isFinished) return;
+        match.isFinished = true;
 
         try {
-          await AppDataSource.transaction(
+          const res = await AppDataSource.transaction(
             async (transactionalEntityManager: EntityManager) => {
               const winner = await transactionalEntityManager.findOne(User, {
                 where: { email: userEmail },
+                relations: ['level'],
               });
               const loserEmail = match.players.find(
                 (player) => player !== userEmail,
@@ -106,25 +113,22 @@ export const setupSocket = (server: any): void => {
               winner.experience += experienceAwarded;
               await transactionalEntityManager.save(winner);
               await checkLevelUp(winner, transactionalEntityManager);
-              const res = {
+              return {
                 winner: winner.nickName,
                 loser: loser?.nickName,
                 problemId: problemNumber,
                 experience: experienceAwarded,
               };
-              const winnerSocketId = Object.keys(users).find(
-                (id) => users[id] === userEmail,
-              );
-              const loserSocketId = Object.keys(users).find(
-                (id) => users[id] === loserEmail,
-              );
-              if (winnerSocketId)
-                io.to(winnerSocketId).emit('battleEnded', res);
-              if (loserSocketId) io.to(loserSocketId).emit('battleEnded', res);
             },
           );
+
+          // 커밋된 뒤에만 결과를 알린다.
+          for (const socketId of match.socketIds)
+            io.to(socketId).emit('battleEnded', res);
+          delete battles[matchId];
         } catch (error) {
-          console.error('Error finding user:', error);
+          match.isFinished = false;
+          console.error('Error finishing battle:', error);
         }
       },
     );
@@ -170,7 +174,11 @@ async function checkLevelUp(
   user: User,
   transactionalEntityManager: EntityManager,
 ): Promise<void> {
-  if (user.experience >= 100) {
+  if (!user.level) {
+    console.warn(`사용자 ${user.email}에게 레벨이 없습니다.`);
+    return;
+  }
+  if (user.experience >= user.level.requiredExperience) {
     const currentLevel = user.level.level;
     const nextLevel = await transactionalEntityManager.findOne(Level, {
       where: { level: currentLevel + 1 },
