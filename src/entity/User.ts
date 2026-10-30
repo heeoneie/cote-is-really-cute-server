@@ -14,6 +14,8 @@ import { Level } from './Level';
 import bcrypt from 'bcryptjs';
 import { IsEmail, Length } from 'class-validator';
 
+const BCRYPT_HASH = /^\$2[aby]\$\d{2}\$.{53}$/;
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn({ name: 'userId', type: 'int' })
@@ -33,12 +35,10 @@ export class User {
   @Column({ name: 'password', type: 'varchar', length: 100, nullable: false })
   password!: string;
   @BeforeInsert()
-  async hashPassword() {
-    const salt = await bcrypt.genSalt();
-    this.password = await bcrypt.hash(this.password, salt);
-  }
   @BeforeUpdate()
-  async hashPasswordOnUpdate() {
+  async hashPassword() {
+    // save()는 경험치·레벨만 바꿀 때도 이 훅을 부른다. 이미 해시된 값을 다시 해시하면 로그인이 깨진다.
+    if (!this.password || BCRYPT_HASH.test(this.password)) return;
     const salt = await bcrypt.genSalt();
     this.password = await bcrypt.hash(this.password, salt);
   }
